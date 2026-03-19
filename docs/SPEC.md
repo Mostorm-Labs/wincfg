@@ -1,152 +1,170 @@
-# SPEC.md — Windows Config Automation Tool
+# SPEC — Windows Config Automation Tool
 
-## Overview
-
-A PowerShell-based automation tool that configures Windows for unattended/kiosk use cases (e.g., Zoom Rooms, digital signage, meeting room devices). All changes are idempotent, reversible, and logged.
+**Date:** 2026-03-19
 
 ---
 
-## Target Environment
-
-- OS: Windows 10 / Windows 11 (Pro or Enterprise)
-- Use case: Dedicated-purpose devices (meeting rooms, kiosks, always-on displays)
-- Run context: Local admin or SYSTEM account
-
----
-
-## Configuration Modules
-
-### 1. Power Management
-
-| Setting | Value | Method |
-|---|---|---|
-| Power plan | High Performance | `powercfg /setactive` |
-| Sleep timeout (AC) | Never | `powercfg /change` |
-| Hibernate | Disabled | `powercfg /hibernate off` |
-| Display timeout (AC) | Never | `powercfg /change` |
-| Fast startup | Disabled | Registry `HiberbootEnabled=0` |
-
-### 2. Screen Lock / Auto-Lock
-
-| Setting | Value | Method |
-|---|---|---|
-| Screen saver | Disabled | Registry `ScreenSaveActive=0` |
-| Screen saver timeout | 0 | Registry `ScreenSaveTimeOut=0` |
-| Lock on resume | Disabled | Registry `ScreenSaverIsSecure=0` |
-| Idle lock (GPO) | Disabled | Registry `InactivityTimeoutSecs=0` |
-
-### 3. Windows Update
-
-| Setting | Value | Method |
-|---|---|---|
-| Automatic updates | Disabled | Registry `NoAutoUpdate=1` |
-| Windows Update service | Disabled | `sc config wuauserv start= disabled` |
-| Update Orchestrator service | Disabled | `sc config UsoSvc start= disabled` |
-| Delivery Optimization | Disabled | Registry `DODownloadMode=0` |
-
-### 4. Cortana & Search
-
-| Setting | Value | Method |
-|---|---|---|
-| Cortana | Disabled | Registry `AllowCortana=0` |
-| Web search in Start | Disabled | Registry `DisableSearchBoxSuggestions=1` |
-| Cortana on taskbar | Hidden | Registry `ShowCortanaButton=0` |
-
-### 5. Notifications
-
-| Setting | Value | Method |
-|---|---|---|
-| Action Center | Disabled | Registry `DisableNotificationCenter=1` |
-| Toast notifications | Disabled | Registry `ToastEnabled=0` |
-| Lock screen notifications | Disabled | Registry `DisableLockScreenAppNotifications=1` |
-
-### 6. Privacy & Telemetry
-
-| Setting | Value | Method |
-|---|---|---|
-| Telemetry level | Security (0) | Registry `AllowTelemetry=0` |
-| DiagTrack service | Disabled | `sc config DiagTrack start= disabled` |
-| Activity history | Disabled | Registry `PublishUserActivities=0` |
-
-### 7. UI Cleanup
-
-| Setting | Value | Method |
-|---|---|---|
-| Task View button | Hidden | Registry `ShowTaskViewButton=0` |
-| News and Interests | Disabled | Registry `ShellFeedsTaskbarViewMode=2` |
-| Meet Now | Hidden | Registry `HideMeetNow=1` |
-| Auto-hide taskbar | Optional | Registry `AutoHide=1` |
-
-### 8. Background Service (Optional)
-
-A lightweight Windows service (`winconf-agent`) that:
-- Monitors and re-applies critical settings if reverted by Windows Update
-- Exposes a named pipe for status queries
-- Logs to Windows Event Log under source `WinConf`
-
-Implementation: C++ (Win32 service) or PowerShell with NSSM wrapper.
-
----
-
-## Script Interface
+## 1. Script Interface
 
 ```
 winconf.ps1 [-DryRun] [-Verbose] [-Rollback] [-Module <name>]
 ```
 
-| Flag | Description |
-|---|---|
-| `-DryRun` | Show what would change, make no modifications |
-| `-Verbose` | Print each registry/service operation |
-| `-Rollback` | Restore from saved backup snapshot |
-| `-Module` | Run only a specific module (e.g., `Power`, `Updates`) |
+| Flag        | Type   | Description                                              |
+| ----------- | ------ | -------------------------------------------------------- |
+| `-DryRun`   | switch | Print what would change; make no writes                  |
+| `-Verbose`  | switch | Print each registry/service operation to console         |
+| `-Rollback` | switch | Restore all values from snapshot, then exit              |
+| `-Module`   | string | Run only the named module (e.g. `Power`, `ScreenLock`)   |
 
 ---
 
-## Logging
+## 2. Lib Layer
 
-- Log file: `C:\ProgramData\WinConf\winconf.log`
-- Format: `[YYYY-MM-DD HH:MM:SS] [MODULE] [ACTION] key=value`
-- Backup snapshot: `C:\ProgramData\WinConf\snapshot.json` (saved before any change)
+### 2.1 Logger.ps1
 
----
-
-## Rollback
-
-Before applying any change, the script saves the current value to `snapshot.json`. Running with `-Rollback` restores all saved values in reverse order.
-
----
-
-## File Structure
-
-```
-winconf/
-├── scripts/
-│   ├── winconf.ps1          # Main entry point
-│   ├── modules/
-│   │   ├── Power.ps1
-│   │   ├── ScreenLock.ps1
-│   │   ├── WindowsUpdate.ps1
-│   │   ├── Cortana.ps1
-│   │   ├── Notifications.ps1
-│   │   ├── Privacy.ps1
-│   │   └── UI.ps1
-│   └── lib/
-│       ├── Registry.ps1     # Registry read/write helpers
-│       ├── Service.ps1      # Service management helpers
-│       └── Logger.ps1       # Logging helpers
-├── service/
-│   └── winconf-agent/       # Optional C++ background service
-├── docs/
-│   └── SPEC.md
-├── CLAUDE.md
-└── README.md
+```powershell
+Write-Log -Level <string> -Module <string> -Message <string>
 ```
 
+- Appends to `C:\ProgramData\WinConf\winconf.log`
+- Format: `[YYYY-MM-DD HH:MM:SS] [MODULE] [LEVEL] message`
+- Levels: `INFO`, `WARN`, `ERROR`
+- When `-Verbose` is active, mirrors output to console via `Write-Verbose`
+
+### 2.2 Registry.ps1
+
+```powershell
+Get-RegValue -Path <string> -Name <string>
+Set-RegValue -Path <string> -Name <string> -Value <object> -Type <RegistryValueKind> [-DryRun]
+```
+
+- `Set-RegValue` calls `Save-Snapshot` before writing, then calls `Write-Log`
+- In `-DryRun` mode: logs intent, skips `Set-ItemProperty`
+- Creates the key path if it does not exist
+
+### 2.3 Service.ps1
+
+```powershell
+Set-ServiceStartType -Name <string> -StartType <string> [-DryRun]
+Stop-ServiceIfRunning  -Name <string> [-DryRun]
+```
+
+- `StartType` values: `Automatic`, `Manual`, `Disabled`
+- Calls `Save-Snapshot` before changing start type
+- Calls `Write-Log` on every operation
+- In `-DryRun` mode: logs intent, skips `sc.exe` calls
+
+### 2.4 Snapshot.ps1
+
+```powershell
+Save-Snapshot -Module <string> -Key <string> -CurrentValue <object>
+Restore-Snapshot
+```
+
+- Snapshot file: `C:\ProgramData\WinConf\snapshot.json`
+- Schema per entry: `{ module, key, value, type, timestamp }`
+- `Restore-Snapshot` replays entries in reverse order
+
 ---
 
-## Testing
+## 3. Module Layer
 
-- Each module should be testable in isolation via `-Module <name> -DryRun`
-- Validate on: Windows 10 21H2+, Windows 11 22H2+
-- Test both standard user (expect elevation prompt) and SYSTEM account contexts
+Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
+
+### 3.1 Power.ps1
+
+| Setting              | Registry / Command                                                        | Value              |
+| -------------------- | ------------------------------------------------------------------------- | ------------------ |
+| High performance plan | `powercfg /setactive SCHEME_MIN`                                          | —                  |
+| Sleep timeout AC     | `powercfg /change standby-timeout-ac 0`                                   | 0 (never)          |
+| Sleep timeout DC     | `powercfg /change standby-timeout-dc 0`                                   | 0 (never)          |
+| Display timeout AC   | `powercfg /change monitor-timeout-ac 0`                                   | 0 (never)          |
+| Display timeout DC   | `powercfg /change monitor-timeout-dc 0`                                   | 0 (never)          |
+| Hibernate            | `powercfg /hibernate off`                                                 | —                  |
+| Fast startup         | `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power` `HiberbootEnabled` DWORD `0` | 0 |
+
+### 3.2 ScreenLock.ps1
+
+| Setting              | Registry Path                                      | Name                    | Value | Type   |
+| -------------------- | -------------------------------------------------- | ----------------------- | ----- | ------ |
+| Screen saver enabled | `HKCU:\Control Panel\Desktop`                      | `ScreenSaveActive`      | `0`   | String |
+| Screen saver timeout | `HKCU:\Control Panel\Desktop`                      | `ScreenSaveTimeOut`     | `0`   | String |
+| Lock on resume       | `HKCU:\Control Panel\Desktop`                      | `ScreenSaverIsSecure`   | `0`   | String |
+| Idle lock (GPO)      | `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System` | `InactivityTimeoutSecs` | `0` | DWORD |
+
+### 3.3 WindowsUpdate.ps1
+
+| Setting                    | Registry Path                                                                 | Name             | Value | Type  |
+| -------------------------- | ----------------------------------------------------------------------------- | ---------------- | ----- | ----- |
+| Disable auto update        | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoUpdate`   | `1`   | DWORD |
+| Delivery Optimization      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization`              | `DODownloadMode` | `0`   | DWORD |
+| wuauserv start type        | Service `wuauserv`                                                            | —                | `Disabled` | — |
+| UsoSvc start type          | Service `UsoSvc`                                                              | —                | `Disabled` | — |
+
+### 3.4 Cortana.ps1
+
+| Setting              | Registry Path                                                                          | Name                        | Value | Type  |
+| -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- |
+| Disable Cortana      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search`                             | `AllowCortana`              | `0`   | DWORD |
+| Disable web search   | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer`                                   | `DisableSearchBoxSuggestions` | `1` | DWORD |
+| Hide taskbar button  | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                    | `ShowCortanaButton`         | `0`   | DWORD |
+
+### 3.5 Notifications.ps1
+
+| Setting                    | Registry Path                                                                              | Name                              | Value | Type  |
+| -------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------- | ----- | ----- |
+| Disable Action Center      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer`                                       | `DisableNotificationCenter`       | `1`   | DWORD |
+| Disable toast notifications | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications`              | `NoToastApplicationNotification`  | `1`   | DWORD |
+| Disable lock screen notifs | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                                         | `DisableLockScreenAppNotifications` | `1` | DWORD |
+
+### 3.6 Privacy.ps1
+
+| Setting              | Registry Path                                                                 | Name                    | Value | Type  |
+| -------------------- | ----------------------------------------------------------------------------- | ----------------------- | ----- | ----- |
+| Telemetry level      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection`                    | `AllowTelemetry`        | `0`   | DWORD |
+| Activity history     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                            | `PublishUserActivities` | `0`   | DWORD |
+| DiagTrack service    | Service `DiagTrack`                                                           | —                       | `Disabled` | — |
+
+### 3.7 UI.ps1
+
+| Setting              | Registry Path                                                                          | Name                        | Value | Type  |
+| -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- |
+| Hide Task View button | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                   | `ShowTaskViewButton`        | `0`   | DWORD |
+| Disable News/Interests | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds`                            | `EnableFeeds`               | `0`   | DWORD |
+| Hide Meet Now        | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`                   | `HideMeetNow`               | `1`   | DWORD |
+| Disable edge gestures | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ImmersiveShell`                     | `EdgeUI\DisabledEdgeSwipe`  | `1`   | DWORD |
+
+---
+
+## 4. Background Service — winconf-agent
+
+| Property       | Value                                      |
+| -------------- | ------------------------------------------ |
+| Wrapper        | NSSM                                       |
+| Script         | `service/winconf-agent/winconf-agent.ps1`  |
+| Poll interval  | 5 minutes                                  |
+| Watch list     | `agent-watch.json` (falls back to defaults)|
+| Event log      | Windows Event Log, source `WinConf`        |
+| Log rotation   | NSSM, max 5 MB                             |
+
+On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue` or `Set-ServiceStartType` call.
+
+---
+
+## 5. File & Data Paths
+
+| Artifact        | Path                                    |
+| --------------- | --------------------------------------- |
+| Log file        | `C:\ProgramData\WinConf\winconf.log`    |
+| Snapshot        | `C:\ProgramData\WinConf\snapshot.json`  |
+| Watch list      | `C:\ProgramData\WinConf\agent-watch.json` |
+
+---
+
+## 6. Error Handling
+
+- Registry key path does not exist → create it, then write
+- Service not found → log `WARN`, skip (do not throw)
+- `powercfg` exits non-zero → log `ERROR`, continue remaining steps
+- Snapshot file missing on `-Rollback` → log `ERROR`, exit with code 1
