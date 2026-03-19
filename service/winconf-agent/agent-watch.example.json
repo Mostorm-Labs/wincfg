@@ -1,0 +1,27 @@
+[
+  {
+    "Path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+    "Name":  "NoAutoUpdate",
+    "Value": 1
+  },
+  {
+    "Path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+    "Name":  "AUOptions",
+    "Value": 1
+  },
+  {
+    "Path":  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
+    "Name":  "AllowTelemetry",
+    "Value": 0
+  },
+  {
+    "Path":  "HKCU:\\Control Panel\\Desktop",
+    "Name":  "ScreenSaveActive",
+    "Value": "0"
+  },
+  {
+    "Path":  "HKCU:\\Control Panel\\Desktop",
+    "Name":  "ScreenSaverIsSecure",
+    "Value": "0"
+  }
+]
