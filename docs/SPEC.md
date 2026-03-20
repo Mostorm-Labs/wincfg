@@ -1,4 +1,4 @@
-# SPEC — Windows Config Automation Tool
+﻿# SPEC 鈥?Windows Config Automation Tool
 
 **Date:** 2026-03-19
 
@@ -42,6 +42,13 @@ Set-RegValue -Path <string> -Name <string> -Value <object> -Type <RegistryValueK
 - `Set-RegValue` calls `Save-Snapshot` before writing, then calls `Write-Log`
 - In `-DryRun` mode: logs intent, skips `Set-ItemProperty`
 - Creates the key path if it does not exist
+- Must log the registry path, value name, intended value, and prior value when available
+- Must distinguish these outcomes explicitly in logs and error handling:
+  - missing registry key/value
+  - access denied / unauthorized operation
+  - unsupported registry path/value for current OS
+  - invalid registry definition
+- If a registry path is OS-specific or optional, the module must follow module-level policy for skip vs fail; it must not return an ambiguous generic error
 
 ### 2.3 Service.ps1
 
@@ -76,12 +83,12 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 
 | Setting              | Registry / Command                                                        | Value              |
 | -------------------- | ------------------------------------------------------------------------- | ------------------ |
-| High performance plan | `powercfg /setactive SCHEME_MIN`                                          | —                  |
+| High performance plan | `powercfg /setactive SCHEME_MIN`                                          | 鈥?                 |
 | Sleep timeout AC     | `powercfg /change standby-timeout-ac 0`                                   | 0 (never)          |
 | Sleep timeout DC     | `powercfg /change standby-timeout-dc 0`                                   | 0 (never)          |
 | Display timeout AC   | `powercfg /change monitor-timeout-ac 0`                                   | 0 (never)          |
 | Display timeout DC   | `powercfg /change monitor-timeout-dc 0`                                   | 0 (never)          |
-| Hibernate            | `powercfg /hibernate off`                                                 | —                  |
+| Hibernate            | `powercfg /hibernate off`                                                 | 鈥?                 |
 | Fast startup         | `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power` `HiberbootEnabled` DWORD `0` | 0 |
 
 ### 3.2 ScreenLock.ps1
@@ -99,8 +106,8 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 | -------------------------- | ----------------------------------------------------------------------------- | ---------------- | ----- | ----- |
 | Disable auto update        | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoUpdate`   | `1`   | DWORD |
 | Delivery Optimization      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization`              | `DODownloadMode` | `0`   | DWORD |
-| wuauserv start type        | Service `wuauserv`                                                            | —                | `Disabled` | — |
-| UsoSvc start type          | Service `UsoSvc`                                                              | —                | `Disabled` | — |
+| wuauserv start type        | Service `wuauserv`                                                            | 鈥?               | `Disabled` | 鈥?|
+| UsoSvc start type          | Service `UsoSvc`                                                              | 鈥?               | `Disabled` | 鈥?|
 
 ### 3.4 Cortana.ps1
 
@@ -124,20 +131,30 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 | -------------------- | ----------------------------------------------------------------------------- | ----------------------- | ----- | ----- |
 | Telemetry level      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection`                    | `AllowTelemetry`        | `0`   | DWORD |
 | Activity history     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                            | `PublishUserActivities` | `0`   | DWORD |
-| DiagTrack service    | Service `DiagTrack`                                                           | —                       | `Disabled` | — |
+| DiagTrack service    | Service `DiagTrack`                                                           | 鈥?                      | `Disabled` | 鈥?|
 
 ### 3.7 UI.ps1
 
 | Setting              | Registry Path                                                                          | Name                        | Value | Type  |
 | -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- |
 | Hide Task View button | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                   | `ShowTaskViewButton`        | `0`   | DWORD |
-| Disable News/Interests | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds`                            | `EnableFeeds`               | `0`   | DWORD |
+| Disable News/Interests (policy path) | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds`            | `EnableFeeds`               | `0`   | DWORD |
+| Disable News/Interests (user path, Windows-version dependent) | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds` | `ShellFeedsTaskbarViewMode` | `2`   | DWORD |
+| Hide widgets / Chat-style taskbar entry (Windows-version dependent) | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced` | `TaskbarDa` | `0` | DWORD |
 | Hide Meet Now        | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`                   | `HideMeetNow`               | `1`   | DWORD |
 | Disable edge gestures | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ImmersiveShell`                     | `EdgeUI\DisabledEdgeSwipe`  | `1`   | DWORD |
 
+UI module policy:
+
+- UI settings related to News/Interests, Feeds, Widgets, or taskbar-integrated shell features are Windows-version dependent.
+- Before writing an OS-specific UI setting, the module must verify whether the target registry path/value is applicable on the current Windows build and user context.
+- If the path is absent but valid for the current OS/context, create the key and write the value.
+- If the path/value is unsupported for the current OS/context, log `WARN` and skip that setting unless the setting is marked mandatory by a future spec revision.
+- Access denied / unauthorized failures must be logged as `ERROR` with the exact path and value name.
+
 ---
 
-## 4. Background Service — winconf-agent
+## 4. Background Service 鈥?winconf-agent
 
 | Property       | Value                                      |
 | -------------- | ------------------------------------------ |
@@ -164,7 +181,11 @@ On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue
 
 ## 6. Error Handling
 
-- Registry key path does not exist → create it, then write
-- Service not found → log `WARN`, skip (do not throw)
-- `powercfg` exits non-zero → log `ERROR`, continue remaining steps
-- Snapshot file missing on `-Rollback` → log `ERROR`, exit with code 1
+- Registry key path does not exist -> create it, then write
+- Registry value does not exist -> create it if the path/value is valid for the current OS/context
+- Access denied / unauthorized operation during registry write -> log `ERROR` with path and value name; do not classify as missing key
+- Unsupported OS-specific registry path/value -> log `WARN`, skip that setting, continue remaining steps
+- Invalid registry path/value definition in module config -> log `ERROR` and fail the affected module
+- Service not found -> log `WARN`, skip (do not throw)
+- `powercfg` exits non-zero -> log `ERROR`, continue remaining steps
+- Snapshot file missing on `-Rollback` -> log `ERROR`, exit with code 1
