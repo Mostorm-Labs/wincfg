@@ -1,50 +1,6 @@
 # Cortana.ps1 - Disable Cortana and web search
 # Depends on: Logger.ps1, Registry.ps1, Snapshot.ps1
 
-function Test-CortanaSettingOsProtectedOptional {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Name
-    )
-
-    switch ($Name) {
-        'ShowCortanaButton' { return $true }
-        default { return $false }
-    }
-}
-
-function Set-OptionalCortanaRegValue {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Path,
-        [Parameter(Mandatory)]
-        [string] $Name,
-        [Parameter(Mandatory)]
-        $Value,
-        [Microsoft.Win32.RegistryValueKind] $Type = [Microsoft.Win32.RegistryValueKind]::DWord,
-        [Parameter(Mandatory)]
-        [string] $Module,
-        [switch] $DryRun
-    )
-
-    try {
-        Set-RegValue -Path $Path -Name $Name -Value $Value -Type $Type -Module $Module -DryRun:$DryRun
-    } catch {
-        $isProtectedOptionalSetting = Test-CortanaSettingOsProtectedOptional -Name $Name
-        $isUnauthorized = (
-            $_.Exception.InnerException -is [System.UnauthorizedAccessException] -or
-            $_.Exception.Message -match 'access denied / unauthorized operation'
-        )
-
-        if ($isProtectedOptionalSetting -and $isUnauthorized) {
-            Write-Log -Level WARN -Module $Module -Message "Skipping OS-protected optional Cortana setting path='$Path' name='$Name' intended='$Value'. Direct registry write was rejected by the OS."
-            return
-        }
-
-        throw
-    }
-}
-
 function Invoke-Cortana {
     param([switch] $DryRun)
 
@@ -63,8 +19,8 @@ function Invoke-Cortana {
         -Module $module -DryRun:$DryRun
 
     # 3. Hide Cortana button on taskbar
-    Set-OptionalCortanaRegValue -Path $taskbarPath -Name "ShowCortanaButton" -Value 0 `
-        -Module $module -DryRun:$DryRun
+    Set-OptionalRegValue -Path $taskbarPath -Name "ShowCortanaButton" -Value 0 `
+        -Module $module -DryRun:$DryRun -WarningPrefix 'Skipping OS-protected optional Cortana setting' -SkipOnUnauthorized
 
     Write-Log -Level INFO -Module $module -Message "=== Cortana module complete ==="
 }

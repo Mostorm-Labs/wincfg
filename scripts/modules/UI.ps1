@@ -13,58 +13,10 @@ function Test-UISettingApplicable {
     )
 
     switch ($Name) {
+        'HideMeetNow' { return $Build -gt 0 -and $Build -lt 22000 }
         'ShellFeedsTaskbarViewMode' { return $Build -gt 0 -and $Build -lt 22000 }
         'TaskbarDa' { return $Build -ge 22000 }
         default { return $true }
-    }
-}
-
-function Test-UISettingOsProtectedOptional {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Name
-    )
-
-    switch ($Name) {
-        'TaskbarDa' { return $true }
-        default { return $false }
-    }
-}
-
-function Set-OptionalUIRegValue {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Path,
-        [Parameter(Mandatory)]
-        [string] $Name,
-        [Parameter(Mandatory)]
-        $Value,
-        [Microsoft.Win32.RegistryValueKind] $Type = [Microsoft.Win32.RegistryValueKind]::DWord,
-        [Parameter(Mandatory)]
-        [string] $Module,
-        [switch] $DryRun
-    )
-
-    if (-not (Test-UISettingApplicable -Name $Name)) {
-        Write-Log -Level WARN -Module $Module -Message "Skipping unsupported UI setting path='$Path' name='$Name' intended='$Value'"
-        return
-    }
-
-    try {
-        Set-RegValue -Path $Path -Name $Name -Value $Value -Type $Type -Module $Module -DryRun:$DryRun
-    } catch {
-        $isProtectedOptionalSetting = Test-UISettingOsProtectedOptional -Name $Name
-        $isUnauthorized = (
-            $_.Exception.InnerException -is [System.UnauthorizedAccessException] -or
-            $_.Exception.Message -match 'access denied / unauthorized operation'
-        )
-
-        if ($isProtectedOptionalSetting -and $isUnauthorized) {
-            Write-Log -Level WARN -Module $Module -Message "Skipping OS-protected optional UI setting path='$Path' name='$Name' intended='$Value'. Direct registry write was rejected by the OS."
-            return
-        }
-
-        throw
     }
 }
 
@@ -84,10 +36,21 @@ function Invoke-UI {
     Set-RegValue -Path $advancedPath -Name 'ShowTaskViewButton' -Value 0 -Module $module -DryRun:$DryRun
     Set-RegValue -Path $policyFeedsPath -Name 'EnableFeeds' -Value 0 -Module $module -DryRun:$DryRun
 
-    Set-OptionalUIRegValue -Path $advancedPath -Name 'TaskbarDa' -Value 0 -Module $module -DryRun:$DryRun
-    Set-OptionalUIRegValue -Path $feedsPath -Name 'ShellFeedsTaskbarViewMode' -Value 2 -Module $module -DryRun:$DryRun
+    Set-ApplicableOptionalRegValue -Path $advancedPath -Name 'TaskbarDa' -Value 0 -Module $module -DryRun:$DryRun `
+        -Applicable:(Test-UISettingApplicable -Name 'TaskbarDa') `
+        -UnsupportedWarningPrefix 'Skipping unsupported UI setting' `
+        -WarningPrefix 'Skipping OS-protected optional UI setting' `
+        -SkipOnUnauthorized
 
-    Set-RegValue -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer' -Name 'HideMeetNow' -Value 1 -Module $module -DryRun:$DryRun
+    Set-ApplicableOptionalRegValue -Path $feedsPath -Name 'ShellFeedsTaskbarViewMode' -Value 2 -Module $module -DryRun:$DryRun `
+        -Applicable:(Test-UISettingApplicable -Name 'ShellFeedsTaskbarViewMode') `
+        -UnsupportedWarningPrefix 'Skipping unsupported UI setting'
+
+    Set-ApplicableOptionalRegValue -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer' -Name 'HideMeetNow' -Value 1 -Module $module -DryRun:$DryRun `
+        -Applicable:(Test-UISettingApplicable -Name 'HideMeetNow') `
+        -UnsupportedWarningPrefix 'Skipping unsupported UI setting' `
+        -WarningPrefix 'Skipping OS-protected optional UI setting' `
+        -SkipOnUnauthorized
 
     if ($AutoHideTaskbar) {
         Set-RegValue -Path $advancedPath -Name 'AutoHideTaskbar' -Value 1 -Module $module -DryRun:$DryRun

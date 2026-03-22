@@ -12,12 +12,11 @@ Describe 'Cortana.ps1 risk remediation alignment' {
         $content | Should Not Match 'BingSearchEnabled'
     }
 
-    It 'marks ShowCortanaButton as an OS-protected optional shell setting' {
+    It 'uses the shared optional registry helper for ShowCortanaButton' {
         $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\Cortana.ps1" -Raw
 
-        $content | Should Match 'function Test-CortanaSettingOsProtectedOptional'
-        $content | Should Match 'ShowCortanaButton'
         $content | Should Match 'Skipping OS-protected optional Cortana setting'
-        $content | Should Match 'Set-OptionalCortanaRegValue -Path \$taskbarPath -Name "ShowCortanaButton" -Value 0'
+        $content | Should Match 'Set-OptionalRegValue -Path \$taskbarPath -Name "ShowCortanaButton" -Value 0'
+        $content | Should Match 'SkipOnUnauthorized'
     }
 }

@@ -99,6 +99,18 @@ function Format-RegLogValue {
     return [string] $Value
 }
 
+function Test-RegUnauthorizedFailure {
+    param(
+        [Parameter(Mandatory)]
+        [System.Exception] $Exception
+    )
+
+    return (
+        $Exception -is [System.UnauthorizedAccessException] -or
+        $Exception.Message -match 'access denied / unauthorized operation'
+    )
+}
+
 function Set-RegValue {
     param(
         [string] $Path,
@@ -141,4 +153,52 @@ function Set-RegValue {
         Write-Log -Level ERROR -Module $Module -Message $message
         throw [System.InvalidOperationException]::new($message, $_.Exception)
     }
+}
+
+function Set-OptionalRegValue {
+    param(
+        [string] $Path,
+        [string] $Name,
+        $Value,
+        [Microsoft.Win32.RegistryValueKind] $Type = [Microsoft.Win32.RegistryValueKind]::DWord,
+        [string] $Module = 'Registry',
+        [switch] $DryRun,
+        [string] $WarningPrefix = 'Skipping optional setting',
+        [switch] $SkipOnUnauthorized
+    )
+
+    try {
+        Set-RegValue -Path $Path -Name $Name -Value $Value -Type $Type -Module $Module -DryRun:$DryRun
+    } catch {
+        $innerException = if ($_.Exception.InnerException) { $_.Exception.InnerException } else { $_.Exception }
+
+        if ($SkipOnUnauthorized -and (Test-RegUnauthorizedFailure -Exception $innerException)) {
+            Write-Log -Level WARN -Module $Module -Message "$WarningPrefix path='$Path' name='$Name' intended='$(Format-RegLogValue -Value $Value)'. Direct registry write was rejected by the OS."
+            return
+        }
+
+        throw
+    }
+}
+
+function Set-ApplicableOptionalRegValue {
+    param(
+        [string] $Path,
+        [string] $Name,
+        $Value,
+        [Microsoft.Win32.RegistryValueKind] $Type = [Microsoft.Win32.RegistryValueKind]::DWord,
+        [string] $Module = 'Registry',
+        [switch] $DryRun,
+        [switch] $Applicable = $true,
+        [string] $UnsupportedWarningPrefix = 'Skipping unsupported optional setting',
+        [string] $WarningPrefix = 'Skipping optional setting',
+        [switch] $SkipOnUnauthorized
+    )
+
+    if (-not $Applicable) {
+        Write-Log -Level WARN -Module $Module -Message "$UnsupportedWarningPrefix path='$Path' name='$Name' intended='$(Format-RegLogValue -Value $Value)'"
+        return
+    }
+
+    Set-OptionalRegValue -Path $Path -Name $Name -Value $Value -Type $Type -Module $Module -DryRun:$DryRun -WarningPrefix $WarningPrefix -SkipOnUnauthorized:$SkipOnUnauthorized
 }

@@ -7,6 +7,13 @@ Describe 'UI.ps1 Issue #1 behavior' {
         Test-UISettingApplicable -Name 'ShellFeedsTaskbarViewMode' -Build 19045 | Should Be $true
     }
 
+    It 'marks HideMeetNow as supported on Windows 10 builds and unsupported on Windows 11 builds' {
+        . "$PSScriptRoot\..\scripts\modules\UI.ps1"
+
+        Test-UISettingApplicable -Name 'HideMeetNow' -Build 19045 | Should Be $true
+        Test-UISettingApplicable -Name 'HideMeetNow' -Build 22631 | Should Be $false
+    }
+
     It 'marks ShellFeedsTaskbarViewMode as unsupported on Windows 11 builds' {
         . "$PSScriptRoot\..\scripts\modules\UI.ps1"
 
@@ -19,25 +26,29 @@ Describe 'UI.ps1 Issue #1 behavior' {
         Test-UISettingApplicable -Name 'TaskbarDa' -Build 22631 | Should Be $true
     }
 
-    It 'marks TaskbarDa as an OS-protected optional setting' {
-        . "$PSScriptRoot\..\scripts\modules\UI.ps1"
+    It 'uses the shared optional registry helper for TaskbarDa' {
+        $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
 
-        Test-UISettingOsProtectedOptional -Name 'TaskbarDa' | Should Be $true
+        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$advancedPath -Name ''TaskbarDa'' -Value 0'
+        $content | Should Match 'Skipping OS-protected optional UI setting'
+        $content | Should Match 'SkipOnUnauthorized'
     }
 
     It 'contains an explicit WARN skip path for unsupported OS-specific settings' {
         $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
 
-        $content | Should Match "Write-Log -Level WARN"
         $content | Should Match "Skipping unsupported UI setting"
+        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$feedsPath -Name ''ShellFeedsTaskbarViewMode'' -Value 2'
+        $content | Should Match 'Set-ApplicableOptionalRegValue -Path ''HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer'' -Name ''HideMeetNow'' -Value 1'
+        $content | Should Match 'UnsupportedWarningPrefix ''Skipping unsupported UI setting'''
     }
 
     It 'contains an explicit WARN skip path for OS-protected TaskbarDa write rejection' {
         $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
 
-        $content | Should Match 'Test-UISettingOsProtectedOptional -Name \$Name'
+        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$advancedPath -Name ''TaskbarDa'' -Value 0'
         $content | Should Match 'Skipping OS-protected optional UI setting'
-        $content | Should Match 'access denied / unauthorized operation'
+        $content | Should Match 'SkipOnUnauthorized'
     }
 
     It 'wires Issue #1 registry settings through the expected helpers' {
@@ -45,8 +56,8 @@ Describe 'UI.ps1 Issue #1 behavior' {
 
         $content | Should Match 'Set-RegValue -Path \$advancedPath -Name ''ShowTaskViewButton'' -Value 0'
         $content | Should Match 'Set-RegValue -Path \$policyFeedsPath -Name ''EnableFeeds'' -Value 0'
-        $content | Should Match 'Set-OptionalUIRegValue -Path \$advancedPath -Name ''TaskbarDa'' -Value 0'
-        $content | Should Match 'Set-OptionalUIRegValue -Path \$feedsPath -Name ''ShellFeedsTaskbarViewMode'' -Value 2'
-        $content | Should Match 'Set-RegValue -Path ''HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer'' -Name ''HideMeetNow'' -Value 1'
+        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$advancedPath -Name ''TaskbarDa'' -Value 0'
+        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$feedsPath -Name ''ShellFeedsTaskbarViewMode'' -Value 2'
+        $content | Should Match 'Set-ApplicableOptionalRegValue -Path ''HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer'' -Name ''HideMeetNow'' -Value 1'
     }
 }
