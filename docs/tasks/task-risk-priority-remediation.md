@@ -8,6 +8,10 @@ Related Task Plan: [task-issue-1.md](./task-issue-1.md)
 
 **TASK-RISK-REMEDIATION-1**
 
+## Progress
+
+- Completed: `TASK-RISK-REMEDIATION-1-01` to `TASK-RISK-REMEDIATION-1-09`
+
 ## Objective
 
 Reduce the highest-risk implementation and maintenance issues in the WinConf project by fixing:
@@ -44,7 +48,7 @@ Each task in this file must be:
 Align `ScreenLock` idle-lock implementation with the SPEC
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -80,7 +84,7 @@ Pending
 Add regression tests for `ScreenLock` spec alignment
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -115,7 +119,7 @@ Pending
 Align `Notifications` module paths and roots with the SPEC
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -154,7 +158,7 @@ Pending
 Add `Notifications` risk classification for policy-backed vs user-preference settings
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -188,7 +192,7 @@ Pending
 Audit `Cortana` module for deprecated or OS-drifted settings
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -226,7 +230,7 @@ Pending
 Extend OS-protected optional-setting handling beyond `TaskbarDa`
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -264,7 +268,7 @@ Pending
 Introduce shared metadata for registry-setting stability categories
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -300,7 +304,7 @@ Pending
 Expand regression coverage for drift-prone shell and policy settings
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -336,7 +340,7 @@ Pending
 Align implementation-facing documentation after risk remediation
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
