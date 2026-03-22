@@ -17,10 +17,17 @@ function Get-RegValue {
 function Test-RegDefinition {
     param(
         [string] $Path,
-        [string] $Name
+        [string] $Name,
+        $Value,
+        [Microsoft.Win32.RegistryValueKind] $Type = [Microsoft.Win32.RegistryValueKind]::DWord
     )
 
-    return -not [string]::IsNullOrWhiteSpace($Path) -and -not [string]::IsNullOrWhiteSpace($Name)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    if ([string]::IsNullOrWhiteSpace($Name)) { return $false }
+    if ($null -eq $Value) { return $false }
+    if (-not [System.Enum]::IsDefined([Microsoft.Win32.RegistryValueKind], $Type)) { return $false }
+
+    return $true
 }
 
 function Get-RegFailureCategory {
@@ -28,10 +35,12 @@ function Get-RegFailureCategory {
         [Parameter(Mandatory)]
         [System.Exception] $Exception,
         [string] $Path,
-        [string] $Name
+        [string] $Name,
+        $Value,
+        [Microsoft.Win32.RegistryValueKind] $Type = [Microsoft.Win32.RegistryValueKind]::DWord
     )
 
-    if (-not (Test-RegDefinition -Path $Path -Name $Name)) {
+    if (-not (Test-RegDefinition -Path $Path -Name $Name -Value $Value -Type $Type)) {
         return 'invalid registry definition'
     }
 
@@ -72,10 +81,22 @@ function New-RegFailureMessage {
         [string] $Category,
         [string] $Path,
         [string] $Name,
+        $IntendedValue,
+        $PriorValue,
         [System.Exception] $Exception
     )
 
-    return "Registry write failed ($Category): $Path\$Name. $($Exception.Message)"
+    return "Registry write failed ($Category): path='$Path' name='$Name' intended='$IntendedValue' prior='$PriorValue'. $($Exception.Message)"
+}
+
+function Format-RegLogValue {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return '<absent>'
+    }
+
+    return [string] $Value
 }
 
 function Set-RegValue {
@@ -88,17 +109,19 @@ function Set-RegValue {
         [switch] $DryRun
     )
 
-    if (-not (Test-RegDefinition -Path $Path -Name $Name)) {
+    if (-not (Test-RegDefinition -Path $Path -Name $Name -Value $Value -Type $Type)) {
         $category = 'invalid registry definition'
-        $message = "Registry write failed ($category): $Path\$Name. Path and Name are required."
+        $message = "Registry write failed ($category): path='$Path' name='$Name' intended='$(Format-RegLogValue -Value $Value)' prior='<absent>'. Path, Name, Value, and Type are required."
         Write-Log -Level ERROR -Module $Module -Message $message
         throw [System.InvalidOperationException]::new($message)
     }
 
     $current = Get-RegValue -Path $Path -Name $Name
+    $priorDisplay = Format-RegLogValue -Value $current
+    $intendedDisplay = Format-RegLogValue -Value $Value
 
     if ($DryRun) {
-        Write-Log -Level DRY -Module $Module -Message "Would set $Path\$Name = $Value (current: $current)"
+        Write-Log -Level DRY -Module $Module -Message "Would set path='$Path' name='$Name' intended='$intendedDisplay' prior='$priorDisplay'"
         return
     }
 
@@ -107,14 +130,14 @@ function Set-RegValue {
     try {
         if (-not (Test-Path $Path)) {
             New-Item -Path $Path -Force -ErrorAction Stop | Out-Null
-            Write-Log -Level INFO -Module $Module -Message "Created registry key $Path"
+            Write-Log -Level INFO -Module $Module -Message "Created registry key path='$Path'"
         }
 
         New-ItemProperty -Path $Path -Name $Name -Value $Value -PropertyType $Type -Force -ErrorAction Stop | Out-Null
-        Write-Log -Level INFO -Module $Module -Message "Set $Path\$Name = $Value (was: $current)"
+        Write-Log -Level INFO -Module $Module -Message "Set path='$Path' name='$Name' intended='$intendedDisplay' prior='$priorDisplay'"
     } catch {
-        $category = Get-RegFailureCategory -Exception $_.Exception -Path $Path -Name $Name
-        $message = New-RegFailureMessage -Category $category -Path $Path -Name $Name -Exception $_.Exception
+        $category = Get-RegFailureCategory -Exception $_.Exception -Path $Path -Name $Name -Value $Value -Type $Type
+        $message = New-RegFailureMessage -Category $category -Path $Path -Name $Name -IntendedValue $intendedDisplay -PriorValue $priorDisplay -Exception $_.Exception
         Write-Log -Level ERROR -Module $Module -Message $message
         throw [System.InvalidOperationException]::new($message, $_.Exception)
     }

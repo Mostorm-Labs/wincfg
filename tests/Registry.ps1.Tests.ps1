@@ -1,81 +1,106 @@
 ﻿#Requires -Modules Pester
 
-Describe 'Registry.ps1 outcome classification' {
+Describe 'Registry.ps1 Issue #1 behavior' {
     BeforeEach {
         . "$PSScriptRoot\..\scripts\lib\Logger.ps1"
         . "$PSScriptRoot\..\scripts\lib\Snapshot.ps1"
         . "$PSScriptRoot\..\scripts\lib\Registry.ps1"
 
+        $script:BasePath = 'HKCU:\SOFTWARE\WinConfIssue1Tests'
+        $script:KeyPath = Join-Path $script:BasePath ([guid]::NewGuid().ToString())
         $script:LogPath = Join-Path $env:TEMP ("winconf-registry-test-{0}.log" -f ([guid]::NewGuid()))
         $script:SnapshotPath = Join-Path $env:TEMP ("winconf-registry-test-{0}.json" -f ([guid]::NewGuid()))
 
         Initialize-Logger -LogPath $script:LogPath
         Initialize-Snapshot -Path $script:SnapshotPath
-
-        Mock Get-RegValue { $null }
     }
 
     AfterEach {
+        Remove-Item -Path $script:KeyPath -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -Path $script:LogPath -ErrorAction SilentlyContinue
         Remove-Item -Path $script:SnapshotPath -ErrorAction SilentlyContinue
     }
 
-    It 'classifies invalid registry definition when Path is missing' {
+    It 'logs intended and prior values when overwriting an existing value' {
+        New-Item -Path $script:KeyPath -Force | Out-Null
+        New-ItemProperty -Path $script:KeyPath -Name 'Existing' -Value 3 -PropertyType DWord -Force | Out-Null
+
+        Set-RegValue -Path $script:KeyPath -Name 'Existing' -Value 5 -Module 'Test'
+
+        (Get-ItemProperty -Path $script:KeyPath -Name 'Existing').Existing | Should Be 5
+        $log = Get-Content $script:LogPath -Raw
+        $log | Should BeLike "*path='$script:KeyPath' name='Existing' intended='5' prior='3'*"
+    }
+
+    It 'logs an absent prior value cleanly when creating a missing value' {
+        New-Item -Path $script:KeyPath -Force | Out-Null
+
+        Set-RegValue -Path $script:KeyPath -Name 'MissingValue' -Value 1 -Module 'Test'
+
+        $log = Get-Content $script:LogPath -Raw
+        $log | Should BeLike "*path='$script:KeyPath' name='MissingValue' intended='1' prior='<absent>'*"
+    }
+
+    It 'creates a missing value under an existing key' {
+        New-Item -Path $script:KeyPath -Force | Out-Null
+
+        Set-RegValue -Path $script:KeyPath -Name 'MissingValue' -Value 1 -Module 'Test'
+
+        (Get-ItemProperty -Path $script:KeyPath -Name 'MissingValue').MissingValue | Should Be 1
+    }
+
+    It 'creates a missing key and value for a valid path' {
+        Set-RegValue -Path $script:KeyPath -Name 'CreatedValue' -Value 9 -Module 'Test'
+
+        Test-Path $script:KeyPath | Should Be $true
+        (Get-ItemProperty -Path $script:KeyPath -Name 'CreatedValue').CreatedValue | Should Be 9
+    }
+
+    It 'fails invalid registry definitions when Value is missing' {
         $message = $null
 
         try {
-            Set-RegValue -Path '' -Name 'TestName' -Value 1 -Module 'Test'
+            Set-RegValue -Path $script:KeyPath -Name 'NullValue' -Value $null -Module 'Test'
         } catch {
             $message = $_.Exception.Message
         }
 
         $message | Should BeLike '*invalid registry definition*'
-        (Get-Content $script:LogPath -Raw) | Should BeLike '*invalid registry definition*'
-        Test-Path $script:SnapshotPath | Should Be $false
     }
 
-    It 'classifies access denied separately from missing key/value' {
-        $message = $null
-        Mock Test-Path { $true }
-        Mock New-ItemProperty { throw [System.UnauthorizedAccessException]::new('Access is denied') }
+    It 'classifies access denied separately from missing key creation' {
+        $category = Get-RegFailureCategory `
+            -Exception ([System.UnauthorizedAccessException]::new('Access is denied')) `
+            -Path $script:KeyPath `
+            -Name 'DeniedValue' `
+            -Value 1
 
-        try {
-            Set-RegValue -Path 'HKCU:\Software\WinConfTest' -Name 'TestName' -Value 1 -Module 'Test'
-        } catch {
-            $message = $_.Exception.Message
-        }
-
-        $message | Should BeLike '*access denied / unauthorized operation*'
-        (Get-Content $script:LogPath -Raw) | Should BeLike '*access denied / unauthorized operation*'
+        $category | Should Be 'access denied / unauthorized operation'
     }
 
-    It 'classifies unsupported registry path/value for current OS' {
-        $message = $null
-        Mock Test-Path { $true }
-        Mock New-ItemProperty { throw [System.NotSupportedException]::new('This registry path is not supported') }
+    It 'classifies unsupported registry paths separately' {
+        $category = Get-RegFailureCategory `
+            -Exception ([System.NotSupportedException]::new('This registry path is not supported')) `
+            -Path $script:KeyPath `
+            -Name 'UnsupportedValue' `
+            -Value 1
 
-        try {
-            Set-RegValue -Path 'HKCU:\Software\WinConfTest' -Name 'TestName' -Value 1 -Module 'Test'
-        } catch {
-            $message = $_.Exception.Message
-        }
-
-        $message | Should BeLike '*unsupported registry path/value for current OS*'
-        (Get-Content $script:LogPath -Raw) | Should BeLike '*unsupported registry path/value for current OS*'
+        $category | Should Be 'unsupported registry path/value for current OS'
     }
 
-    It 'classifies missing registry key/value separately' {
-        $message = $null
-        Mock Test-Path { $true }
-        Mock New-ItemProperty { throw [System.Management.Automation.ItemNotFoundException]::new('Cannot find path') }
+    It 'records snapshot metadata for registry entries' {
+        Set-RegValue -Path $script:KeyPath -Name 'CreatedValue' -Value 11 -Module 'Test'
 
-        try {
-            Set-RegValue -Path 'HKCU:\Software\WinConfTest' -Name 'TestName' -Value 1 -Module 'Test'
-        } catch {
-            $message = $_.Exception.Message
-        }
+        $snapshot = Get-Content -Path $script:SnapshotPath -Raw | ConvertFrom-Json
+        $snapshot.Type | Should Be 'Registry'
+        $snapshot.Module | Should Be 'Test'
+        $snapshot.Key | Should Be "$script:KeyPath\CreatedValue"
+    }
 
-        $message | Should BeLike '*missing registry key/value*'
-        (Get-Content $script:LogPath -Raw) | Should BeLike '*missing registry key/value*'
+    It 'restores prior state by removing a value created under a newly created key' {
+        Set-RegValue -Path $script:KeyPath -Name 'CreatedValue' -Value 11 -Module 'Test'
+        Restore-Snapshot
+
+        Test-Path $script:KeyPath | Should Be $false
     }
 }
