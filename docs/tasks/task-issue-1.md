@@ -8,6 +8,11 @@ Related Spec: [../SPEC.md](../SPEC.md)
 
 **TASK-ISSUE-1**
 
+## Progress
+
+- Completed: `TASK-ISSUE-1-01` to `TASK-ISSUE-1-14`
+- Pending: `TASK-ISSUE-1-15`
+
 ## Objective
 
 Implement the SPEC updates required by Issue `WINCFG-UI-001` so the `UI` module handles missing registry keys/values, OS-specific taskbar settings, and registry write failures in a precise and testable way.
@@ -26,6 +31,9 @@ Each task in this file must be:
 
 **Title**  
 Add registry outcome classification in `Registry.ps1`
+
+**Status**  
+Completed
 
 **Scope**
 
@@ -57,6 +65,9 @@ Add registry outcome classification in `Registry.ps1`
 
 **Title**  
 Add prior-value and target-value logging for registry writes
+
+**Status**  
+Completed
 
 **Scope**
 
@@ -90,6 +101,9 @@ Add prior-value and target-value logging for registry writes
 **Title**  
 Handle missing registry value creation
 
+**Status**  
+Completed
+
 **Scope**
 
 - When a registry key exists but the target value does not, create the value if the path/value is valid for the current OS/context.
@@ -116,6 +130,9 @@ Handle missing registry value creation
 
 **Title**  
 Handle missing registry key creation for valid OS-specific settings
+
+**Status**  
+Completed
 
 **Scope**
 
@@ -144,6 +161,9 @@ Handle missing registry key creation for valid OS-specific settings
 **Title**  
 Skip unsupported OS-specific registry paths with explicit warning
 
+**Status**  
+Completed
+
 **Scope**
 
 - Add handling so unsupported UI/taskbar registry settings are skipped with `WARN` instead of failing the module ambiguously.
@@ -171,6 +191,9 @@ Skip unsupported OS-specific registry paths with explicit warning
 **Title**  
 Add invalid registry-definition validation
 
+**Status**  
+Completed
+
 **Scope**
 
 - Detect malformed or incomplete registry setting definitions before execution.
@@ -197,6 +220,9 @@ Add invalid registry-definition validation
 
 **Title**  
 Implement UI setting for `ShellFeedsTaskbarViewMode`
+
+**Status**  
+Completed
 
 **Scope**
 
@@ -230,6 +256,9 @@ Implement UI setting for `ShellFeedsTaskbarViewMode`
 **Title**  
 Implement UI setting for `TaskbarDa`
 
+**Status**  
+Completed
+
 **Scope**
 
 - Add or align support for:
@@ -261,6 +290,9 @@ Implement UI setting for `TaskbarDa`
 
 **Title**  
 Preserve and align policy-path `EnableFeeds` handling
+
+**Status**  
+Completed
 
 **Scope**
 
@@ -295,6 +327,9 @@ Preserve and align policy-path `EnableFeeds` handling
 **Title**  
 Add UI-module applicability checks for OS-dependent settings
 
+**Status**  
+Completed
+
 **Scope**
 
 - Before applying Feeds, Widgets, or similar taskbar-integrated settings, determine whether the setting applies to the current Windows build and current user context.
@@ -321,6 +356,9 @@ Add UI-module applicability checks for OS-dependent settings
 
 **Title**  
 Prevent access-denied errors from being misclassified as missing-key failures
+
+**Status**  
+Completed
 
 **Scope**
 
@@ -349,6 +387,9 @@ Prevent access-denied errors from being misclassified as missing-key failures
 **Title**  
 Verify snapshot and rollback behavior for newly created keys and values
 
+**Status**  
+Completed
+
 **Scope**
 
 - Confirm snapshot records remain correct when registry keys or values are created during apply operations.
@@ -376,6 +417,9 @@ Verify snapshot and rollback behavior for newly created keys and values
 
 **Title**  
 Add registry helper tests for the outcome matrix
+
+**Status**  
+Completed
 
 **Scope**
 
@@ -415,6 +459,9 @@ Add registry helper tests for the outcome matrix
 **Title**  
 Add UI module tests for Issue #1 settings
 
+**Status**  
+Completed
+
 **Scope**
 
 - Add tests for:
@@ -449,6 +496,9 @@ Add UI module tests for Issue #1 settings
 
 **Title**  
 Align implementation-facing documentation with the updated SPEC
+
+**Status**  
+Pending
 
 **Scope**
 
