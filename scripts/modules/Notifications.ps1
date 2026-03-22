@@ -5,24 +5,22 @@ function Invoke-Notifications {
     param([switch] $DryRun)
 
     $module = "Notifications"
-    $pushPath   = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications"
-    $policyPath = "HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications"
+    $explorerPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer"
+    $pushPolicyPath     = "HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications"
+    $systemPolicyPath   = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
     Write-Log -Level INFO -Module $module -Message "=== Starting Notifications module ==="
 
     # 1. Disable Action Center (notification panel)
-    Set-RegValue -Path "HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer" `
+    Set-RegValue -Path $explorerPolicyPath `
         -Name "DisableNotificationCenter" -Value 1 `
         -Module $module -DryRun:$DryRun
 
     # 2. Disable toast notifications
-    Set-RegValue -Path $pushPath -Name "ToastEnabled" -Value 0 `
-        -Module $module -DryRun:$DryRun
-
-    Set-RegValue -Path $policyPath -Name "NoToastApplicationNotification" -Value 1 `
+    Set-RegValue -Path $pushPolicyPath -Name "NoToastApplicationNotification" -Value 1 `
         -Module $module -DryRun:$DryRun
 
     # 3. Disable lock screen notifications
-    Set-RegValue -Path $pushPath -Name "LockScreenToastEnabled" -Value 0 `
+    Set-RegValue -Path $systemPolicyPath -Name "DisableLockScreenAppNotifications" -Value 1 `
         -Module $module -DryRun:$DryRun
 
     Write-Log -Level INFO -Module $module -Message "=== Notifications module complete ==="
