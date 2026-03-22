@@ -21,6 +21,7 @@ Specifically:
   - access denied / unauthorized operation,
   - unsupported OS feature,
   - invalid registry path/value definition.
+- For OS-dependent taskbar settings such as `TaskbarDa`, the module shall treat observed OS-protected direct-write failures as an applicability outcome, not as a generic module failure, when the setting is optional and the surrounding module can continue safely.
 
 ## 3. System-Level Operations
 
@@ -56,6 +57,27 @@ Operational expectations:
 - Detect whether the current shell/token has sufficient rights for the target operation.
 - Do not treat all registry write failures as "missing key" problems; unauthorized access must remain a separate error class.
 
+### Follow-up Runtime Evidence
+
+Additional runtime evidence gathered after the initial issue analysis shows:
+
+- `ShowTaskViewButton` can be written successfully under:
+  - `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`
+- `EnableFeeds` can be created and written successfully under:
+  - `HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds`
+- `TaskbarDa` can still fail with `UnauthorizedAccessException` under the same `Explorer\Advanced` key, even when:
+  - the script is launched from an elevated PowerShell window,
+  - execution uses `powershell -ExecutionPolicy Bypass -File .\winconf.ps1`,
+  - and other values in the same key are writable.
+
+This narrows the likely root cause:
+
+- the failure is not a general elevation problem,
+- not a global registry-path ACL problem for `Explorer\Advanced`,
+- and not an execution-policy problem once the script is already running.
+
+The most likely interpretation is that some Windows 11 builds treat `TaskbarDa` as a shell-managed or OS-protected setting whose direct registry creation/write path is not reliably available to normal automation, even when adjacent values remain writable.
+
 ### Service
 
 No Windows service interaction is explicitly required by the issue.
@@ -69,6 +91,7 @@ Potential indirect shell/UI refresh behavior is not specified in the issue.
 - When the `UI` module processes a registry-backed UI setting and the target key already exists, the value is written successfully and logged.
 - When the target key does not exist but is valid for the current OS and feature, the key is created and the value is written successfully.
 - When the target setting is unsupported on the current Windows version or feature state, the module logs `unsupported setting/path` explicitly.
+- When an optional OS-dependent setting such as `TaskbarDa` is rejected by the OS with a direct-write protection behavior, the module logs that protection outcome explicitly and skips the setting with `WARN` instead of failing ambiguously.
 - The module must not fail with an ambiguous generic error when the actual condition is `missing key`.
 - The module must not misclassify `access denied` as `missing key`.
 
@@ -79,7 +102,7 @@ Potential indirect shell/UI refresh behavior is not specified in the issue.
   - value name,
   - intended value,
   - whether key was created,
-  - whether failure was due to missing key, access denial, or unsupported setting.
+  - whether failure was due to missing key, access denial, unsupported setting, or OS-protected optional setting behavior.
 - If a module step fails, the failing registry operation must be identifiable from logs without reading source code.
 
 ### Stability
@@ -98,6 +121,7 @@ Potential indirect shell/UI refresh behavior is not specified in the issue.
 - **Value-type risk**: incorrect registry value type can produce write failures or ineffective settings.
 - **Rollback risk**: creating a missing key changes rollback semantics; rollback must know whether to delete the created key or only restore prior values.
 - **Feature drift risk**: Microsoft may deprecate or ignore some taskbar registry settings on newer builds.
+- **OS-protected setting risk**: `TaskbarDa` may exist as a documented or observed shell setting while still rejecting direct registry creation/writes on some Windows 11 builds, even for elevated users.
 
 ## 6. Missing Information
 
@@ -111,6 +135,10 @@ Potential indirect shell/UI refresh behavior is not specified in the issue.
   - fail the module,
   - skip with warning,
   - or continue with partial success.
+- Whether `TaskbarDa` should be treated as:
+  - a normal writable optional value,
+  - an OS-protected optional value,
+  - or a setting that must be managed only through supported shell/UI channels on some builds.
 - Whether explorer/taskbar refresh or sign-out/restart is required for the change to take effect.
 - Whether rollback should remove newly created keys or only restore values.
 - Whether the product officially supports OS-conditional settings in a single `UI` module.
@@ -120,3 +148,20 @@ Potential indirect shell/UI refresh behavior is not specified in the issue.
 The most likely requirement behind the issue is:
 
 > The `UI` module must safely handle missing or unsupported registry paths for taskbar configuration, especially `Feeds`-related settings, and must report the exact cause instead of failing with a generic unauthorized-operation error.
+
+## Follow-up Interpretation After Reproduction
+
+After reproducing the behavior on a system where:
+
+- `ShowTaskViewButton` writes successfully,
+- `EnableFeeds` writes successfully,
+- but `TaskbarDa` fails with `UnauthorizedAccessException`,
+
+the more precise interpretation is:
+
+> `TaskbarDa` must no longer be treated as a universally writable Windows 11 taskbar setting. When direct registry writes are rejected by the OS for this optional setting, the `UI` module should classify the outcome as OS-protected / not directly writable in the current context, emit `WARN`, and continue.
+
+## Notes From Additional References
+
+- Microsoft documents the Windows 11 Widgets taskbar setting under `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDa`, confirming that the value is associated with the Widgets button. Source: https://learn.microsoft.com/en-us/windows/apps/develop/settings/settings-windows-11
+- Microsoft Q&A reports that on some Windows 11 23H2 systems after 2024-08 updates, `TaskbarDa` can no longer be changed reliably by direct registry editing and is effectively controlled through the Settings UI path instead. This supports treating the setting as OS-protected on at least some builds. Source: https://learn.microsoft.com/ja-jp/answers/questions/3957307/2024-8-windows-kb5041585-taskbarda
