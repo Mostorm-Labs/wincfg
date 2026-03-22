@@ -1,63 +1,38 @@
 #Requires -Modules Pester
 
 Describe 'UI.ps1 Issue #1 behavior' {
-    It 'marks ShellFeedsTaskbarViewMode as supported on Windows 10 builds' {
+    It 'describes UI settings through shared descriptors' {
+        . "$PSScriptRoot\..\scripts\lib\Registry.ps1"
         . "$PSScriptRoot\..\scripts\modules\UI.ps1"
 
-        Test-UISettingApplicable -Name 'ShellFeedsTaskbarViewMode' -Build 19045 | Should Be $true
+        $settings = Get-UISettings
+        $settings.Count | Should Be 5
+        ($settings | Where-Object { $_.Name -eq 'TaskbarDa' }).Category | Should Be 'os_protected_optional'
+        ($settings | Where-Object { $_.Name -eq 'EnableFeeds' }).Category | Should Be 'required_policy_backed'
     }
 
-    It 'marks HideMeetNow as supported on Windows 10 builds and unsupported on Windows 11 builds' {
+    It 'applies build rules through shared descriptor applicability' {
+        . "$PSScriptRoot\..\scripts\lib\Registry.ps1"
         . "$PSScriptRoot\..\scripts\modules\UI.ps1"
 
-        Test-UISettingApplicable -Name 'HideMeetNow' -Build 19045 | Should Be $true
-        Test-UISettingApplicable -Name 'HideMeetNow' -Build 22631 | Should Be $false
+        $taskbarDa = Get-UISettings | Where-Object { $_.Name -eq 'TaskbarDa' }
+        $feeds = Get-UISettings | Where-Object { $_.Name -eq 'ShellFeedsTaskbarViewMode' }
+        $meetNow = Get-UISettings | Where-Object { $_.Name -eq 'HideMeetNow' }
+
+        (Test-RegSettingApplicable -Descriptor $taskbarDa -Build 22631) | Should Be $true
+        (Test-RegSettingApplicable -Descriptor $feeds -Build 19045) | Should Be $true
+        (Test-RegSettingApplicable -Descriptor $feeds -Build 22631) | Should Be $false
+        (Test-RegSettingApplicable -Descriptor $meetNow -Build 19045) | Should Be $true
+        (Test-RegSettingApplicable -Descriptor $meetNow -Build 22631) | Should Be $false
     }
 
-    It 'marks ShellFeedsTaskbarViewMode as unsupported on Windows 11 builds' {
-        . "$PSScriptRoot\..\scripts\modules\UI.ps1"
-
-        Test-UISettingApplicable -Name 'ShellFeedsTaskbarViewMode' -Build 22631 | Should Be $false
-    }
-
-    It 'marks TaskbarDa as supported on Windows 11 builds' {
-        . "$PSScriptRoot\..\scripts\modules\UI.ps1"
-
-        Test-UISettingApplicable -Name 'TaskbarDa' -Build 22631 | Should Be $true
-    }
-
-    It 'uses the shared optional registry helper for TaskbarDa' {
+    It 'executes UI settings through descriptor-based invocation' {
         $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
 
-        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$advancedPath -Name ''TaskbarDa'' -Value 0'
-        $content | Should Match 'Skipping OS-protected optional UI setting'
-        $content | Should Match 'SkipOnUnauthorized'
-    }
-
-    It 'contains an explicit WARN skip path for unsupported OS-specific settings' {
-        $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
-
-        $content | Should Match "Skipping unsupported UI setting"
-        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$feedsPath -Name ''ShellFeedsTaskbarViewMode'' -Value 2'
-        $content | Should Match 'Set-ApplicableOptionalRegValue -Path ''HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer'' -Name ''HideMeetNow'' -Value 1'
-        $content | Should Match 'UnsupportedWarningPrefix ''Skipping unsupported UI setting'''
-    }
-
-    It 'contains an explicit WARN skip path for OS-protected TaskbarDa write rejection' {
-        $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
-
-        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$advancedPath -Name ''TaskbarDa'' -Value 0'
-        $content | Should Match 'Skipping OS-protected optional UI setting'
-        $content | Should Match 'SkipOnUnauthorized'
-    }
-
-    It 'wires Issue #1 registry settings through the expected helpers' {
-        $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
-
-        $content | Should Match 'Set-RegValue -Path \$advancedPath -Name ''ShowTaskViewButton'' -Value 0'
-        $content | Should Match 'Set-RegValue -Path \$policyFeedsPath -Name ''EnableFeeds'' -Value 0'
-        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$advancedPath -Name ''TaskbarDa'' -Value 0'
-        $content | Should Match 'Set-ApplicableOptionalRegValue -Path \$feedsPath -Name ''ShellFeedsTaskbarViewMode'' -Value 2'
-        $content | Should Match 'Set-ApplicableOptionalRegValue -Path ''HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer'' -Name ''HideMeetNow'' -Value 1'
+        $content | Should Match 'function Get-UISettings'
+        $content | Should Match 'New-RegSettingDescriptor -Name ''TaskbarDa'''
+        $content | Should Match 'New-RegSettingDescriptor -Name ''ShellFeedsTaskbarViewMode'''
+        $content | Should Match 'foreach \(\$setting in Get-UISettings\)'
+        $content | Should Match 'Invoke-RegSettingDescriptor -Descriptor \$setting -Module \$module -DryRun:\$DryRun -Build \$build'
     }
 }

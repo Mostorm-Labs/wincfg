@@ -5,19 +5,19 @@ function Get-WindowsBuildNumber {
     return [System.Environment]::OSVersion.Version.Build
 }
 
-function Test-UISettingApplicable {
-    param(
-        [Parameter(Mandatory)]
-        [string] $Name,
-        [int] $Build = (Get-WindowsBuildNumber)
-    )
+function Get-UISettings {
+    $advancedPath    = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    $feedsPath       = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds'
+    $policyFeedsPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds'
+    $meetNowPath     = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
 
-    switch ($Name) {
-        'HideMeetNow' { return $Build -gt 0 -and $Build -lt 22000 }
-        'ShellFeedsTaskbarViewMode' { return $Build -gt 0 -and $Build -lt 22000 }
-        'TaskbarDa' { return $Build -ge 22000 }
-        default { return $true }
-    }
+    return @(
+        (New-RegSettingDescriptor -Name 'ShowTaskViewButton' -Path $advancedPath -Value 0 -Category 'stable_user_preference'),
+        (New-RegSettingDescriptor -Name 'EnableFeeds' -Path $policyFeedsPath -Value 0 -Category 'required_policy_backed'),
+        (New-RegSettingDescriptor -Name 'TaskbarDa' -Path $advancedPath -Value 0 -Required $false -Category 'os_protected_optional' -MinBuild 22000 -SkipOnUnauthorized $true -UnsupportedWarningPrefix 'Skipping unsupported UI setting' -WarningPrefix 'Skipping OS-protected optional UI setting'),
+        (New-RegSettingDescriptor -Name 'ShellFeedsTaskbarViewMode' -Path $feedsPath -Value 2 -Required $false -Category 'optional_os_dependent' -MaxBuild 21999 -UnsupportedWarningPrefix 'Skipping unsupported UI setting'),
+        (New-RegSettingDescriptor -Name 'HideMeetNow' -Path $meetNowPath -Value 1 -Required $false -Category 'os_protected_optional' -MaxBuild 21999 -SkipOnUnauthorized $true -UnsupportedWarningPrefix 'Skipping unsupported UI setting' -WarningPrefix 'Skipping OS-protected optional UI setting')
+    )
 }
 
 function Invoke-UI {
@@ -28,29 +28,13 @@ function Invoke-UI {
 
     $module          = 'UI'
     $advancedPath    = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
-    $feedsPath       = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds'
-    $policyFeedsPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds'
+    $build           = Get-WindowsBuildNumber
 
     Write-Log -Level INFO -Module $module -Message '=== Starting UI module ==='
 
-    Set-RegValue -Path $advancedPath -Name 'ShowTaskViewButton' -Value 0 -Module $module -DryRun:$DryRun
-    Set-RegValue -Path $policyFeedsPath -Name 'EnableFeeds' -Value 0 -Module $module -DryRun:$DryRun
-
-    Set-ApplicableOptionalRegValue -Path $advancedPath -Name 'TaskbarDa' -Value 0 -Module $module -DryRun:$DryRun `
-        -Applicable:(Test-UISettingApplicable -Name 'TaskbarDa') `
-        -UnsupportedWarningPrefix 'Skipping unsupported UI setting' `
-        -WarningPrefix 'Skipping OS-protected optional UI setting' `
-        -SkipOnUnauthorized
-
-    Set-ApplicableOptionalRegValue -Path $feedsPath -Name 'ShellFeedsTaskbarViewMode' -Value 2 -Module $module -DryRun:$DryRun `
-        -Applicable:(Test-UISettingApplicable -Name 'ShellFeedsTaskbarViewMode') `
-        -UnsupportedWarningPrefix 'Skipping unsupported UI setting'
-
-    Set-ApplicableOptionalRegValue -Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer' -Name 'HideMeetNow' -Value 1 -Module $module -DryRun:$DryRun `
-        -Applicable:(Test-UISettingApplicable -Name 'HideMeetNow') `
-        -UnsupportedWarningPrefix 'Skipping unsupported UI setting' `
-        -WarningPrefix 'Skipping OS-protected optional UI setting' `
-        -SkipOnUnauthorized
+    foreach ($setting in Get-UISettings) {
+        Invoke-RegSettingDescriptor -Descriptor $setting -Module $module -DryRun:$DryRun -Build $build
+    }
 
     if ($AutoHideTaskbar) {
         Set-RegValue -Path $advancedPath -Name 'AutoHideTaskbar' -Value 1 -Module $module -DryRun:$DryRun
