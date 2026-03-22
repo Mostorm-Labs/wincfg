@@ -19,11 +19,25 @@ Describe 'UI.ps1 Issue #1 behavior' {
         Test-UISettingApplicable -Name 'TaskbarDa' -Build 22631 | Should Be $true
     }
 
+    It 'marks TaskbarDa as an OS-protected optional setting' {
+        . "$PSScriptRoot\..\scripts\modules\UI.ps1"
+
+        Test-UISettingOsProtectedOptional -Name 'TaskbarDa' | Should Be $true
+    }
+
     It 'contains an explicit WARN skip path for unsupported OS-specific settings' {
         $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
 
         $content | Should Match "Write-Log -Level WARN"
         $content | Should Match "Skipping unsupported UI setting"
+    }
+
+    It 'contains an explicit WARN skip path for OS-protected TaskbarDa write rejection' {
+        $content = Get-Content -Path "$PSScriptRoot\..\scripts\modules\UI.ps1" -Raw
+
+        $content | Should Match 'Test-UISettingOsProtectedOptional -Name \$Name'
+        $content | Should Match 'Skipping OS-protected optional UI setting'
+        $content | Should Match 'access denied / unauthorized operation'
     }
 
     It 'wires Issue #1 registry settings through the expected helpers' {

@@ -19,6 +19,18 @@ function Test-UISettingApplicable {
     }
 }
 
+function Test-UISettingOsProtectedOptional {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Name
+    )
+
+    switch ($Name) {
+        'TaskbarDa' { return $true }
+        default { return $false }
+    }
+}
+
 function Set-OptionalUIRegValue {
     param(
         [Parameter(Mandatory)]
@@ -38,7 +50,22 @@ function Set-OptionalUIRegValue {
         return
     }
 
-    Set-RegValue -Path $Path -Name $Name -Value $Value -Type $Type -Module $Module -DryRun:$DryRun
+    try {
+        Set-RegValue -Path $Path -Name $Name -Value $Value -Type $Type -Module $Module -DryRun:$DryRun
+    } catch {
+        $isProtectedOptionalSetting = Test-UISettingOsProtectedOptional -Name $Name
+        $isUnauthorized = (
+            $_.Exception.InnerException -is [System.UnauthorizedAccessException] -or
+            $_.Exception.Message -match 'access denied / unauthorized operation'
+        )
+
+        if ($isProtectedOptionalSetting -and $isUnauthorized) {
+            Write-Log -Level WARN -Module $Module -Message "Skipping OS-protected optional UI setting path='$Path' name='$Name' intended='$Value'. Direct registry write was rejected by the OS."
+            return
+        }
+
+        throw
+    }
 }
 
 function Invoke-UI {
