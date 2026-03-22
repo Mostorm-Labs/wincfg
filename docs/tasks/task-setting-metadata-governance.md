@@ -46,7 +46,7 @@ Each task in this file must be:
 Define a shared setting descriptor schema
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -88,7 +88,7 @@ Pending
 Implement shared metadata helpers for applicability and fallback
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -125,7 +125,7 @@ Pending
 Migrate `UI` module settings to descriptor-based execution
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -161,7 +161,7 @@ Pending
 Migrate `Cortana` module optional shell behavior to descriptor-based execution
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -195,7 +195,7 @@ Pending
 Evaluate whether `Notifications` should adopt descriptor metadata now or later
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -228,7 +228,7 @@ Pending
 Add regression tests for descriptor-driven setting execution
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -263,7 +263,7 @@ Pending
 Align documentation with the descriptor-based governance model
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 

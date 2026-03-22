@@ -10,6 +10,11 @@ function Invoke-Notifications {
     $systemPolicyPath   = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System"
     Write-Log -Level INFO -Module $module -Message "=== Starting Notifications module ==="
 
+    # Metadata migration is intentionally deferred for Notifications because the
+    # module currently contains only stable policy-backed settings after risk
+    # remediation, so explicit calls remain clearer than introducing descriptors
+    # before mixed stability categories reappear.
+
     # 1. Disable Action Center (notification panel)
     Set-RegValue -Path $explorerPolicyPath `
         -Name "DisableNotificationCenter" -Value 1 `

@@ -42,6 +42,12 @@ Set-RegValue -Path <string> -Name <string> -Value <object> -Type <RegistryValueK
 - `Set-RegValue` calls `Save-Snapshot` before writing, then calls `Write-Log`
 - In `-DryRun` mode: logs intent, skips `Set-ItemProperty`
 - Creates the key path if it does not exist
+- Shared governance helpers may execute registry settings from descriptor metadata that includes:
+  - required vs optional classification
+  - setting category (`required_policy_backed`, `stable_user_preference`, `optional_os_dependent`, `os_protected_optional`)
+  - build applicability bounds
+  - unsupported-setting warning semantics
+  - unauthorized-skip semantics for OS-protected optional settings
 - Must log the registry path, value name, intended value, and prior value when available
 - Must distinguish these outcomes explicitly in logs and error handling:
   - missing registry key/value
@@ -150,7 +156,7 @@ UI module policy:
 - Before writing an OS-specific UI setting, the module must verify whether the target registry path/value is applicable on the current Windows build and user context.
 - If the path is absent but valid for the current OS/context, create the key and write the value.
 - If the path/value is unsupported for the current OS/context, log `WARN` and skip that setting unless the setting is marked mandatory by a future spec revision.
-- Access denied / unauthorized failures must be logged as `ERROR` with the exact path and value name.
+- Access denied / unauthorized failures must be logged as `ERROR` with the exact path and value name, unless the setting is explicitly classified as an OS-protected optional setting whose direct-write rejection is handled as `WARN + skip`.
 
 ---
 
