@@ -1,39 +1,44 @@
-# UI.ps1 — Taskbar and shell UI cleanup
+﻿# UI.ps1 - Taskbar and shell UI cleanup
 # Depends on: Logger.ps1, Registry.ps1, Snapshot.ps1
+
+function Get-WindowsBuildNumber {
+    return [System.Environment]::OSVersion.Version.Build
+}
+
+function Get-UISettings {
+    $advancedPath    = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    $feedsPath       = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds'
+    $policyFeedsPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds'
+    $meetNowPath     = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+
+    return @(
+        (New-RegSettingDescriptor -Name 'ShowTaskViewButton' -Path $advancedPath -Value 0 -Category 'stable_user_preference'),
+        (New-RegSettingDescriptor -Name 'EnableFeeds' -Path $policyFeedsPath -Value 0 -Category 'required_policy_backed'),
+        (New-RegSettingDescriptor -Name 'TaskbarDa' -Path $advancedPath -Value 0 -Required $false -Category 'os_protected_optional' -MinBuild 22000 -SkipOnUnauthorized $true -UnsupportedWarningPrefix 'Skipping unsupported UI setting' -WarningPrefix 'Skipping OS-protected optional UI setting'),
+        (New-RegSettingDescriptor -Name 'ShellFeedsTaskbarViewMode' -Path $feedsPath -Value 2 -Required $false -Category 'optional_os_dependent' -MaxBuild 21999 -UnsupportedWarningPrefix 'Skipping unsupported UI setting'),
+        (New-RegSettingDescriptor -Name 'HideMeetNow' -Path $meetNowPath -Value 1 -Required $false -Category 'os_protected_optional' -MaxBuild 21999 -SkipOnUnauthorized $true -UnsupportedWarningPrefix 'Skipping unsupported UI setting' -WarningPrefix 'Skipping OS-protected optional UI setting')
+    )
+}
 
 function Invoke-UI {
     param(
         [switch] $DryRun,
-        [switch] $AutoHideTaskbar  # optional, off by default
+        [switch] $AutoHideTaskbar
     )
 
-    $module      = "UI"
-    $advancedPath = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    $feedsPath    = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds"
-    $taskbarPath  = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StuckRects3"
-    Write-Log -Level INFO -Module $module -Message "=== Starting UI module ==="
+    $module          = 'UI'
+    $advancedPath    = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    $build           = Get-WindowsBuildNumber
 
-    # 1. Hide Task View button
-    Set-RegValue -Path $advancedPath -Name "ShowTaskViewButton" -Value 0 `
-        -Module $module -DryRun:$DryRun
+    Write-Log -Level INFO -Module $module -Message '=== Starting UI module ==='
 
-    # 2. Disable News and Interests (Windows 10)
-    Set-RegValue -Path $advancedPath -Name "TaskbarDa" -Value 0 `
-        -Module $module -DryRun:$DryRun
-
-    Set-RegValue -Path $feedsPath -Name "ShellFeedsTaskbarViewMode" -Value 2 `
-        -Module $module -DryRun:$DryRun
-
-    # 3. Hide Meet Now button
-    Set-RegValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" `
-        -Name "HideSCAMeetNow" -Value 1 `
-        -Module $module -DryRun:$DryRun
-
-    # 4. Auto-hide taskbar (optional)
-    if ($AutoHideTaskbar) {
-        Set-RegValue -Path $advancedPath -Name "AutoHideTaskbar" -Value 1 `
-            -Module $module -DryRun:$DryRun
+    foreach ($setting in Get-UISettings) {
+        Invoke-RegSettingDescriptor -Descriptor $setting -Module $module -DryRun:$DryRun -Build $build
     }
 
-    Write-Log -Level INFO -Module $module -Message "=== UI module complete ==="
+    if ($AutoHideTaskbar) {
+        Set-RegValue -Path $advancedPath -Name 'AutoHideTaskbar' -Value 1 -Module $module -DryRun:$DryRun
+    }
+
+    Write-Log -Level INFO -Module $module -Message '=== UI module complete ==='
 }

@@ -6,7 +6,7 @@ function Invoke-ScreenLock {
 
     $module = "ScreenLock"
     $desktopPath = "HKCU:\Control Panel\Desktop"
-    $personalizationPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization"
+    $systemPolicyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
     Write-Log -Level INFO -Module $module -Message "=== Starting ScreenLock module ==="
 
     # 1. Disable screen saver
@@ -22,7 +22,7 @@ function Invoke-ScreenLock {
         -Type String -Module $module -DryRun:$DryRun
 
     # 4. Disable idle lock via policy (InactivityTimeoutSecs = 0)
-    Set-RegValue -Path $personalizationPath -Name "NoLockScreen" -Value 1 `
+    Set-RegValue -Path $systemPolicyPath -Name "InactivityTimeoutSecs" -Value 0 `
         -Module $module -DryRun:$DryRun
 
     Write-Log -Level INFO -Module $module -Message "=== ScreenLock module complete ==="
