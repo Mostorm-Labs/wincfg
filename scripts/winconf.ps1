@@ -36,7 +36,7 @@ Write-Log -Level INFO -Module MAIN -Message "winconf started (DryRun=$DryRun, Ro
 # ── Rollback branch ──────────────────────────────────────────────────────────
 if ($Rollback) {
     Write-Log -Level INFO -Module MAIN -Message "Rollback requested"
-    Restore-Snapshot -DryRun:$DryRun
+    Restore-Snapshot -DryRun:$DryRun -Module $Module
     Write-Log -Level INFO -Module MAIN -Message "Rollback complete"
     exit 0
 }

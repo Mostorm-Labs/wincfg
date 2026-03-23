@@ -103,4 +103,30 @@ Describe 'Registry.ps1 Issue #1 behavior' {
 
         Test-Path $script:KeyPath | Should Be $false
     }
+
+    It 'supports module-scoped rollback without touching unrelated snapshot entries' {
+        $uiPath = Join-Path $script:BasePath ([guid]::NewGuid().ToString())
+        New-Item -Path $uiPath -Force | Out-Null
+        New-ItemProperty -Path $uiPath -Name 'UiValue' -Value 1 -PropertyType DWord -Force | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                Module    = 'WindowsUpdate'
+                Key       = 'Service:wuauserv:StartType'
+                Value     = 'Manual'
+                Type      = 'Service'
+                Timestamp = '2026-03-23 11:00:00'
+            }
+            [PSCustomObject]@{
+                Module    = 'UI'
+                Key       = "$uiPath\UiValue"
+                Value     = $null
+                Type      = 'Registry'
+                Timestamp = '2026-03-23 11:00:01'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        { Restore-Snapshot -Module 'UI' } | Should Not Throw
+        Test-Path $uiPath | Should Be $false
+    }
 }
