@@ -129,4 +129,23 @@ Describe 'Registry.ps1 Issue #1 behavior' {
         { Restore-Snapshot -Module 'UI' } | Should Not Throw
         Test-Path $uiPath | Should Be $false
     }
+
+    It 'supports module-scoped rollback when only a single snapshot entry matches' {
+        $wuPath = Join-Path $script:BasePath ([guid]::NewGuid().ToString())
+        New-Item -Path $wuPath -Force | Out-Null
+        New-ItemProperty -Path $wuPath -Name 'UpdateValue' -Value 1 -PropertyType DWord -Force | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                Module    = 'WindowsUpdate'
+                Key       = "$wuPath\UpdateValue"
+                Value     = $null
+                Type      = 'Registry'
+                Timestamp = '2026-03-23 11:30:00'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        { Restore-Snapshot -Module 'WindowsUpdate' } | Should Not Throw
+        Test-Path $wuPath | Should Be $false
+    }
 }

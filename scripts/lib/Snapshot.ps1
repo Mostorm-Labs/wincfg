@@ -57,6 +57,24 @@ function Remove-EmptyRegistryKey {
     }
 }
 
+function ConvertTo-SnapshotEntryList {
+    param($InputObject)
+
+    $list = [System.Collections.Generic.List[object]]::new()
+
+    if ($null -eq $InputObject) {
+        return $list
+    }
+
+    foreach ($item in @($InputObject)) {
+        if ($null -ne $item) {
+            $list.Add($item)
+        }
+    }
+
+    return $list
+}
+
 function Restore-Snapshot {
     param(
         [switch] $DryRun,
@@ -69,13 +87,12 @@ function Restore-Snapshot {
     }
 
     $rawEntries = Get-Content $script:SnapshotFile -Raw | ConvertFrom-Json
-    $entries = if ($rawEntries -is [System.Array]) { $rawEntries } elseif ($null -eq $rawEntries) { @() } else { @($rawEntries) }
+    $entries = ConvertTo-SnapshotEntryList -InputObject $rawEntries
 
     if ($Module -ne '') {
-        $entries = @($entries | Where-Object { $_.Module -eq $Module })
+        $entries = ConvertTo-SnapshotEntryList -InputObject ($entries | Where-Object { $_.Module -eq $Module })
     }
 
-    $entries = @($entries)
     if ($entries.Count -gt 1) {
         [System.Array]::Reverse($entries)
     }
