@@ -9,6 +9,7 @@
 param(
     [switch] $DryRun,
     [switch] $Rollback,
+    [string] $RestoreProfile = "",
     [string] $Module = ""
 )
 
@@ -31,17 +32,6 @@ $scriptRoot   = $PSScriptRoot
 Initialize-Logger -LogPath $logFile -Verbose:($PSBoundParameters['Verbose'] -eq $true)
 Initialize-Snapshot -Path $snapshotFile
 
-Write-Log -Level INFO -Module MAIN -Message "winconf started (DryRun=$DryRun, Rollback=$Rollback, Module='$Module')"
-
-# ── Rollback branch ──────────────────────────────────────────────────────────
-if ($Rollback) {
-    Write-Log -Level INFO -Module MAIN -Message "Rollback requested"
-    Restore-Snapshot -DryRun:$DryRun -Module $Module
-    Write-Log -Level INFO -Module MAIN -Message "Rollback complete"
-    exit 0
-}
-
-# ── Load modules ─────────────────────────────────────────────────────────────
 $allModules = @(
     @{ Name = "Power";         File = "Power.ps1";         Fn = "Invoke-Power" },
     @{ Name = "ScreenLock";    File = "ScreenLock.ps1";    Fn = "Invoke-ScreenLock" },
@@ -53,6 +43,18 @@ $allModules = @(
     @{ Name = "UI";            File = "UI.ps1";            Fn = "Invoke-UI" }
 )
 
+Write-Log -Level INFO -Module MAIN -Message "winconf started (DryRun=$DryRun, Rollback=$Rollback, RestoreProfile='$RestoreProfile', Module='$Module')"
+
+if ($Rollback -and $RestoreProfile -ne "") {
+    Write-Log -Level ERROR -Module MAIN -Message "Cannot combine -Rollback with -RestoreProfile"
+    exit 1
+}
+
+if ($RestoreProfile -ne "" -and $Module -eq "") {
+    Write-Log -Level ERROR -Module MAIN -Message "Restore profile mode requires -Module"
+    exit 1
+}
+
 # Filter to requested module if specified
 if ($Module -ne "") {
     $selected = $allModules | Where-Object { $_.Name -eq $Module }
@@ -61,6 +63,19 @@ if ($Module -ne "") {
         exit 1
     }
     $allModules = @($selected)
+}
+
+if ($RestoreProfile -ne "" -and $Module -notin @('WindowsUpdate', 'WindowsRestore')) {
+    Write-Log -Level ERROR -Module MAIN -Message "Module '$Module' does not support restore profiles"
+    exit 1
+}
+
+# ── Rollback branch ──────────────────────────────────────────────────────────
+if ($Rollback) {
+    Write-Log -Level INFO -Module MAIN -Message "Rollback requested"
+    Restore-Snapshot -DryRun:$DryRun -Module $Module
+    Write-Log -Level INFO -Module MAIN -Message "Rollback complete"
+    exit 0
 }
 
 foreach ($m in $allModules) {
@@ -72,7 +87,11 @@ $failed = @()
 
 foreach ($m in $allModules) {
     try {
-        & $m.Fn -DryRun:$DryRun
+        if ($RestoreProfile -ne "") {
+            & $m.Fn -DryRun:$DryRun -RestoreProfile $RestoreProfile
+        } else {
+            & $m.Fn -DryRun:$DryRun
+        }
     } catch {
         Write-Log -Level ERROR -Module $m.Name -Message "Module failed: $_"
         $failed += $m.Name

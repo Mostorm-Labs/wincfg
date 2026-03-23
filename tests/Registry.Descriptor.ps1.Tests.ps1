@@ -25,4 +25,17 @@ Describe 'Registry.ps1 descriptor-driven execution' {
         $descriptor.SkipOnUnauthorized | Should Be $true
         (Test-RegSettingApplicable -Descriptor $descriptor -Build 22631) | Should Be $true
     }
+
+    It 'represents a predefined restore profile for registry settings correctly' {
+        $descriptor = New-RegSettingDescriptor `
+            -Name 'NoAutoUpdate' `
+            -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' `
+            -Value 1 `
+            -Category 'required_policy_backed' `
+            -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }
+
+        (Test-RegSettingDescriptor -Descriptor $descriptor) | Should Be $true
+        $descriptor.Profiles.ContainsKey('Default') | Should Be $true
+        $descriptor.Profiles.Default.Action | Should Be 'remove'
+    }
 }

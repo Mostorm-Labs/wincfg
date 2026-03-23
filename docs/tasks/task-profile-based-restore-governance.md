@@ -8,6 +8,10 @@ Related Spec: [../SPEC.md](../SPEC.md)
 
 **TASK-RESTORE-PROFILE-1**
 
+## Progress
+
+- Completed: `TASK-RESTORE-PROFILE-1-01` to `TASK-RESTORE-PROFILE-1-08`
+
 ## Objective
 
 Introduce a shared restore-governance model so WinConf can support both:
@@ -46,7 +50,7 @@ Each task in this file must be:
 Define the distinction between snapshot rollback and profile-based restore
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -80,7 +84,7 @@ Pending
 Define a shared metadata shape for predefined restore profiles
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -117,7 +121,7 @@ Pending
 Define user-facing restore mode selection in `winconf.ps1`
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -154,7 +158,7 @@ Pending
 Prototype profile-based restore for a metadata-driven registry module
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -186,7 +190,7 @@ Pending
 Prototype profile-based restore for a command-driven module
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -220,7 +224,7 @@ Pending
 Audit service-driven modules for restore-profile compatibility
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -255,7 +259,7 @@ Pending
 Add regression tests for restore-governance behavior
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 
@@ -290,7 +294,7 @@ Pending
 Align documentation with the dual restore model
 
 **Status**  
-Pending
+Completed
 
 **Scope**
 

@@ -70,6 +70,12 @@ Profile-based restore must support service-oriented modules where desired restor
 - a specific running/stopped target state,
 - or both.
 
+Current audit outcome:
+
+- registry-driven modules are the best first fit for the shared profile model
+- command-driven modules can also fit when they have explicit reverse commands
+- service-driven modules need a richer abstraction than the current snapshot model because startup type and running state are separate concerns
+
 ## 4. Acceptance Criteria
 
 ### Functional
@@ -124,3 +130,10 @@ The product should treat:
 - profile-based restore as product-defined target-state recovery
 
 and standardize both through a shared governance model instead of leaving reversal behavior module-specific.
+
+The first implementation targets should be:
+
+- `WindowsUpdate` for registry-driven predefined restore
+- `WindowsRestore` for command-driven predefined restore
+
+while service-driven modules such as `Privacy` remain an audited next-step rather than part of the first implementation wave.

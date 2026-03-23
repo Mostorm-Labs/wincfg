@@ -10,8 +10,8 @@ Describe 'WindowsRestore.ps1 module alignment' {
         $content | Should Match 'Invoke-WindowsRestoreCommand -Command ''reagentc /disable'''
         $content | Should Match 'Invoke-WindowsRestoreCommand -Command ''reagentc /enable'''
         $content | Should Match 'function Invoke-WindowsRestore'
-        $content | Should Match '\[switch\] \$Enable'
-        $content | Should Match 'if \(\$Enable\) \{'
+        $content | Should Match '\[string\] \$RestoreProfile = '''''
+        $content | Should Match 'if \(\$RestoreProfile -eq ''Default''\) \{'
         $content | Should Match 'Invoke-WindowsRestoreEnable -DryRun:\$DryRun'
     }
 
@@ -39,6 +39,6 @@ Describe 'WindowsRestore.ps1 module alignment' {
 
         $restoreContent | Should Match 'function Invoke-WindowsRestoreEnable'
         $restoreContent | Should Match 'Skipping command=''reagentc /enable'' because restore availability is already enabled'
-        $mainContent | Should Not Match 'reagentc /enable'
+        $mainContent | Should Match '\[string\] \$RestoreProfile = ""'
     }
 }

@@ -1,4 +1,4 @@
-﻿# SPEC 鈥?Windows Config Automation Tool
+# SPEC - Windows Config Automation Tool
 
 **Date:** 2026-03-19
 
@@ -7,7 +7,7 @@
 ## 1. Script Interface
 
 ```
-winconf.ps1 [-DryRun] [-Verbose] [-Rollback] [-Module <name>]
+winconf.ps1 [-DryRun] [-Verbose] [-Rollback] [-RestoreProfile <name>] [-Module <name>]
 ```
 
 | Flag        | Type   | Description                                              |
@@ -15,13 +15,15 @@ winconf.ps1 [-DryRun] [-Verbose] [-Rollback] [-Module <name>]
 | `-DryRun`   | switch | Print what would change; make no writes                  |
 | `-Verbose`  | switch | Print each registry/service operation to console         |
 | `-Rollback` | switch | Restore values from snapshot history, then exit          |
+| `-RestoreProfile` | string | Restore to a predefined profile for a supported module |
 | `-Module`   | string | Run only the named module (e.g. `Power`, `ScreenLock`)   |
 
 Script interface policy:
 
 - `-Rollback` is the historical rollback mode backed by snapshot data.
-- The product may introduce a future profile-based restore mode that restores to predefined target configurations rather than to recorded historical state.
+- `-RestoreProfile <name>` is the predefined restore mode for supported modules.
 - Historical rollback and profile-based restore are distinct behaviors and must not be conflated.
+- `-Rollback` and `-RestoreProfile` must not be combined in the same invocation.
 
 ---
 
@@ -54,6 +56,7 @@ Set-RegValue -Path <string> -Name <string> -Value <object> -Type <RegistryValueK
   - build applicability bounds
   - unsupported-setting warning semantics
   - unauthorized-skip semantics for OS-protected optional settings
+  - predefined restore profile actions
 - Must log the registry path, value name, intended value, and prior value when available
 - Must distinguish these outcomes explicitly in logs and error handling:
   - missing registry key/value
@@ -61,6 +64,9 @@ Set-RegValue -Path <string> -Name <string> -Value <object> -Type <RegistryValueK
   - unsupported registry path/value for current OS
   - invalid registry definition
 - If a registry path is OS-specific or optional, the module must follow module-level policy for skip vs fail; it must not return an ambiguous generic error
+- Registry descriptor metadata may also define profile-based restore actions such as:
+  - set a predefined restore value
+  - remove a value during restore
 
 ### 2.3 Service.ps1
 
@@ -73,6 +79,14 @@ Stop-ServiceIfRunning  -Name <string> [-DryRun]
 - Calls `Save-Snapshot` before changing start type
 - Calls `Write-Log` on every operation
 - In `-DryRun` mode: logs intent, skips `sc.exe` calls
+
+Service restore compatibility policy:
+
+- Service-oriented modules are not yet fully covered by shared profile-based restore execution.
+- Future service restore metadata must distinguish at least:
+  - startup type target
+  - running/stopped target
+- `Privacy` is the current reference case showing why service restore needs both concepts rather than startup type alone.
 
 ### 2.4 Snapshot.ps1
 
@@ -103,50 +117,50 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 
 ### 3.1 Power.ps1
 
-| Setting              | Registry / Command                                                        | Value              |
-| -------------------- | ------------------------------------------------------------------------- | ------------------ |
-| High performance plan | `powercfg /setactive SCHEME_MIN`                                          | 鈥?                 |
-| Sleep timeout AC     | `powercfg /change standby-timeout-ac 0`                                   | 0 (never)          |
-| Sleep timeout DC     | `powercfg /change standby-timeout-dc 0`                                   | 0 (never)          |
-| Display timeout AC   | `powercfg /change monitor-timeout-ac 0`                                   | 0 (never)          |
-| Display timeout DC   | `powercfg /change monitor-timeout-dc 0`                                   | 0 (never)          |
-| Hibernate            | `powercfg /hibernate off`                                                 | 鈥?                 |
-| Fast startup         | `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power` `HiberbootEnabled` DWORD `0` | 0 |
+| Setting              | Registry / Command                                                        | Value              | Default |
+| -------------------- | ------------------------------------------------------------------------- | ------------------ | ------- |
+| High performance plan | `powercfg /setactive SCHEME_MIN`                                          | `N/A`              | Machine default active plan |
+| Sleep timeout AC     | `powercfg /change standby-timeout-ac 0`                                   | 0 (never)          | Machine default / OEM default |
+| Sleep timeout DC     | `powercfg /change standby-timeout-dc 0`                                   | 0 (never)          | Machine default / OEM default |
+| Display timeout AC   | `powercfg /change monitor-timeout-ac 0`                                   | 0 (never)          | Machine default / OEM default |
+| Display timeout DC   | `powercfg /change monitor-timeout-dc 0`                                   | 0 (never)          | Machine default / OEM default |
+| Hibernate            | `powercfg /hibernate off`                                                 | `N/A`              | Machine default |
+| Fast startup         | `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power` `HiberbootEnabled` DWORD `0` | 0 | Machine default (commonly `1`) |
 
 ### 3.2 ScreenLock.ps1
 
-| Setting              | Registry Path                                      | Name                    | Value | Type   |
-| -------------------- | -------------------------------------------------- | ----------------------- | ----- | ------ |
-| Screen saver enabled | `HKCU:\Control Panel\Desktop`                      | `ScreenSaveActive`      | `0`   | String |
-| Screen saver timeout | `HKCU:\Control Panel\Desktop`                      | `ScreenSaveTimeOut`     | `0`   | String |
-| Lock on resume       | `HKCU:\Control Panel\Desktop`                      | `ScreenSaverIsSecure`   | `0`   | String |
-| Idle lock (GPO)      | `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System` | `InactivityTimeoutSecs` | `0` | DWORD |
+| Setting              | Registry Path                                      | Name                    | Value | Type   | Default |
+| -------------------- | -------------------------------------------------- | ----------------------- | ----- | ------ | ------- |
+| Screen saver enabled | `HKCU:\Control Panel\Desktop`                      | `ScreenSaveActive`      | `0`   | String | OS/user default |
+| Screen saver timeout | `HKCU:\Control Panel\Desktop`                      | `ScreenSaveTimeOut`     | `0`   | String | OS/user default |
+| Lock on resume       | `HKCU:\Control Panel\Desktop`                      | `ScreenSaverIsSecure`   | `0`   | String | OS/user default |
+| Idle lock (GPO)      | `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System` | `InactivityTimeoutSecs` | `0` | DWORD | Absent / Not Configured |
 
 ### 3.3 WindowsUpdate.ps1
 
-| Setting                    | Registry Path                                                                 | Name                                    | Value | Type  |
-| -------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- | ----- | ----- |
-| Disable auto update        | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoUpdate`                          | `1`   | DWORD |
-| Auto update mode           | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `AUOptions`                             | `1`   | DWORD |
-| Hide update shutdown entry | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAUShutdownOption`                    | `1`   | DWORD |
-| Legacy shutdown fallback   | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAUAsDefaultShutdownOption`           | `1`   | DWORD |
-| Disable auto reboot prompt | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoRebootWithLoggedOnUsers`         | `1`   | DWORD |
-| Disable restart notification | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                  | `SetAutoRestartNotificationDisable`     | `1`   | DWORD |
-| Notification suppression   | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `SetUpdateNotificationLevel`            | `2`   | DWORD |
-| Exclude update drivers     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `ExcludeWUDriversInQualityUpdate`       | `1`   | DWORD |
-| Block OS upgrade           | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `DisableOSUpgrade`                      | `1`   | DWORD |
-| Preserve Microsoft Store   | `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`                              | `RemoveWindowsStore`                    | `0`   | DWORD |
-| Store auto-download        | `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`                              | `AutoDownload`                          | `4`   | DWORD |
-| Hide Windows Update page   | `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`           | `SettingsPageVisibility`                | `hide:windowsupdate-action` | String |
-| UX restart notifications   | `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`                          | `RestartNotificationsAllowed2`          | `0`   | DWORD |
-| Hide new update UX messages | `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`                         | `HideWUXMessages`                       | `1`   | DWORD |
-| PolicyManager auto update  | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `AllowAutoUpdate`                       | `0`   | DWORD |
-| PolicyManager notifications | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`               | `DoNotShowUpdateNotifications`          | `1`   | DWORD |
-| PolicyManager power option | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `HideUpdatePowerOption`                 | `1`   | DWORD |
-| PolicyManager driver block | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `ExcludeWUDriversInQualityUpdate`       | `1`   | DWORD |
-| PolicyManager Store access | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`                 | `AllowStore`                            | `1`   | DWORD |
-| PolicyManager Store download | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`               | `AutoDownload`                          | `4`   | DWORD |
-| PolicyManager page visibility | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Settings`           | `SettingsPageVisibility`                | `hide:windowsupdate-action` | String |
+| Setting                    | Registry Path                                                                 | Name                                    | Value | Type  | Default |
+| -------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- | ----- | ----- | ------- |
+| Disable auto update        | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoUpdate`                          | `1`   | DWORD | Absent / Not Configured |
+| Auto update mode           | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `AUOptions`                             | `1`   | DWORD | Absent / Not Configured |
+| Hide update shutdown entry | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAUShutdownOption`                    | `1`   | DWORD | Absent / Not Configured |
+| Legacy shutdown fallback   | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAUAsDefaultShutdownOption`           | `1`   | DWORD | Absent / Not Configured |
+| Disable auto reboot prompt | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoRebootWithLoggedOnUsers`         | `1`   | DWORD | Absent / Not Configured |
+| Disable restart notification | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                  | `SetAutoRestartNotificationDisable`     | `1`   | DWORD | Absent / Not Configured |
+| Notification suppression   | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `SetUpdateNotificationLevel`            | `2`   | DWORD | Absent / Not Configured |
+| Exclude update drivers     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `ExcludeWUDriversInQualityUpdate`       | `1`   | DWORD | Absent / Not Configured |
+| Block OS upgrade           | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `DisableOSUpgrade`                      | `1`   | DWORD | Absent / Not Configured |
+| Preserve Microsoft Store   | `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`                              | `RemoveWindowsStore`                    | `0`   | DWORD | Absent / Not Configured |
+| Store auto-download        | `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`                              | `AutoDownload`                          | `4`   | DWORD | Absent / Not Configured |
+| Hide Windows Update page   | `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`           | `SettingsPageVisibility`                | `hide:windowsupdate-action` | String | Absent / Not Configured |
+| UX restart notifications   | `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`                          | `RestartNotificationsAllowed2`          | `0`   | DWORD | Absent / Not Configured |
+| Hide new update UX messages | `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`                         | `HideWUXMessages`                       | `1`   | DWORD | Absent / Not Configured |
+| PolicyManager auto update  | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `AllowAutoUpdate`                       | `0`   | DWORD | Absent / Not Configured |
+| PolicyManager notifications | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`               | `DoNotShowUpdateNotifications`          | `1`   | DWORD | Absent / Not Configured |
+| PolicyManager power option | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `HideUpdatePowerOption`                 | `1`   | DWORD | Absent / Not Configured |
+| PolicyManager driver block | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `ExcludeWUDriversInQualityUpdate`       | `1`   | DWORD | Absent / Not Configured |
+| PolicyManager Store access | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`                 | `AllowStore`                            | `1`   | DWORD | Absent / Not Configured |
+| PolicyManager Store download | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`               | `AutoDownload`                          | `4`   | DWORD | Absent / Not Configured |
+| PolicyManager page visibility | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Settings`           | `SettingsPageVisibility`                | `hide:windowsupdate-action` | String | Absent / Not Configured |
 
 WindowsUpdate module policy:
 
@@ -159,13 +173,14 @@ WindowsUpdate module policy:
   - and `PolicyManager\current\device\*` keys where applicable.
 - Version-specific compatibility keys may be gated by OS build applicability, but the skip behavior must be explicit and logged.
 - The module must execute `gpupdate /force` after applying registry-backed policy changes unless a future implementation note explicitly defines a safe alternative.
+- `WindowsUpdate` must support a predefined restore profile named `Default` that removes the module-owned policy values to restore basic Windows Update behavior.
 
 ### 3.4 WindowsRestore.ps1
 
-| Setting                      | Command                | Value                          |
-| ---------------------------- | ---------------------- | ------------------------------ |
-| Disable restore availability | `reagentc /disable`    | Disable restore availability   |
-| Re-enable restore availability | `reagentc /enable`   | Re-enable restore availability |
+| Setting                      | Command                | Value                          | Default |
+| ---------------------------- | ---------------------- | ------------------------------ | ------- |
+| Disable restore availability | `reagentc /disable`    | Disable restore availability   | Machine default (commonly enabled) |
+| Re-enable restore availability | `reagentc /enable`   | Re-enable restore availability | Machine default (commonly enabled) |
 
 WindowsRestore module policy:
 
@@ -175,42 +190,44 @@ WindowsRestore module policy:
   - a disable path using `reagentc /disable`,
   - and a supported reverse path using `reagentc /enable`.
 - The supported reverse path is a dedicated `WindowsRestore` enable flow, not a Windows Update rollback side effect.
+- `WindowsRestore` must support a predefined restore profile named `Default` that maps to the enable path.
 - The module must log command execution clearly and distinguish normal execution from `-DryRun`.
 
 ### 3.5 Cortana.ps1
 
-| Setting              | Registry Path                                                                          | Name                        | Value | Type  |
-| -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- |
-| Disable Cortana      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search`                             | `AllowCortana`              | `0`   | DWORD |
-| Disable web search   | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer`                                   | `DisableSearchBoxSuggestions` | `1` | DWORD |
-| Hide taskbar button  | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                    | `ShowCortanaButton`         | `0`   | DWORD |
+| Setting              | Registry Path                                                                          | Name                        | Value | Type  | Default |
+| -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- | ------- |
+| Disable Cortana      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search`                             | `AllowCortana`              | `0`   | DWORD | Absent / Not Configured |
+| Disable web search   | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer`                                   | `DisableSearchBoxSuggestions` | `1` | DWORD | Absent / Not Configured |
+| Hide taskbar button  | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                    | `ShowCortanaButton`         | `0`   | DWORD | OS default / version-dependent |
 
 ### 3.6 Notifications.ps1
 
-| Setting                    | Registry Path                                                                              | Name                              | Value | Type  |
-| -------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------- | ----- | ----- |
-| Disable Action Center      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer`                                       | `DisableNotificationCenter`       | `1`   | DWORD |
-| Disable toast notifications | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications`              | `NoToastApplicationNotification`  | `1`   | DWORD |
-| Disable lock screen notifs | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                                         | `DisableLockScreenAppNotifications` | `1` | DWORD |
+| Setting                    | Registry Path                                                                              | Name                              | Value | Type  | Default |
+| -------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------- | ----- | ----- | ------- |
+| Disable Action Center      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer`                                       | `DisableNotificationCenter`       | `1`   | DWORD | Absent / Not Configured |
+| Disable toast notifications | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications`              | `NoToastApplicationNotification`  | `1`   | DWORD | Absent / Not Configured |
+| Disable lock screen notifs | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                                         | `DisableLockScreenAppNotifications` | `1` | DWORD | Absent / Not Configured |
 
 ### 3.7 Privacy.ps1
 
-| Setting              | Registry Path                                                                 | Name                    | Value | Type  |
-| -------------------- | ----------------------------------------------------------------------------- | ----------------------- | ----- | ----- |
-| Telemetry level      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection`                    | `AllowTelemetry`        | `0`   | DWORD |
-| Activity history     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                            | `PublishUserActivities` | `0`   | DWORD |
-| DiagTrack service    | Service `DiagTrack`                                                           | 鈥?                      | `Disabled` | 鈥?|
+| Setting              | Registry Path                                                                 | Name                    | Value | Type  | Default |
+| -------------------- | ----------------------------------------------------------------------------- | ----------------------- | ----- | ----- | ------- |
+| Telemetry level      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection`                    | `AllowTelemetry`        | `0`   | DWORD | Absent / Not Configured |
+| Activity history     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                            | `PublishUserActivities` | `0`   | DWORD | Absent / Not Configured |
+| DiagTrack upload history | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                        | `UploadUserActivities`  | `0`   | DWORD | Absent / Not Configured |
+| DiagTrack service    | Service `DiagTrack`                                                       | `N/A` | `Disabled` | `N/A` | Machine default |
 
 ### 3.8 UI.ps1
 
-| Setting              | Registry Path                                                                          | Name                        | Value | Type  |
-| -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- |
-| Hide Task View button | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                   | `ShowTaskViewButton`        | `0`   | DWORD |
-| Disable News/Interests (policy path) | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds`            | `EnableFeeds`               | `0`   | DWORD |
-| Disable News/Interests (user path, Windows-version dependent) | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds` | `ShellFeedsTaskbarViewMode` | `2`   | DWORD |
-| Hide widgets / Chat-style taskbar entry (Windows-version dependent) | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced` | `TaskbarDa` | `0` | DWORD |
-| Hide Meet Now        | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`                   | `HideMeetNow`               | `1`   | DWORD |
-| Disable edge gestures | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ImmersiveShell`                     | `EdgeUI\DisabledEdgeSwipe`  | `1`   | DWORD |
+| Setting              | Registry Path                                                                          | Name                        | Value | Type  | Default |
+| -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- | ------- |
+| Hide Task View button | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                   | `ShowTaskViewButton`        | `0`   | DWORD | OS default / version-dependent |
+| Disable News/Interests (policy path) | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds`            | `EnableFeeds`               | `0`   | DWORD | Absent / Not Configured |
+| Disable News/Interests (user path, Windows-version dependent) | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds` | `ShellFeedsTaskbarViewMode` | `2`   | DWORD | OS default / version-dependent |
+| Hide widgets / Chat-style taskbar entry (Windows-version dependent) | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced` | `TaskbarDa` | `0` | DWORD | OS default / version-dependent |
+| Hide Meet Now        | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`                   | `HideMeetNow`               | `1`   | DWORD | OS default / version-dependent |
+| Disable edge gestures | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ImmersiveShell`                     | `EdgeUI\DisabledEdgeSwipe`  | `1`   | DWORD | OS/user default |
 
 UI module policy:
 
@@ -222,7 +239,7 @@ UI module policy:
 
 ---
 
-## 4. Background Service 鈥?winconf-agent
+## 4. Background Service - winconf-agent
 
 | Property       | Value                                      |
 | -------------- | ------------------------------------------ |
@@ -266,4 +283,7 @@ On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue
 - Profile-based restore:
   - driven by predefined product-owned configuration targets
   - intended to return the machine to a supported baseline or named profile
+- Current implemented predefined restore profiles:
+  - `WindowsUpdate` -> `Default`
+  - `WindowsRestore` -> `Default`
 - Modules may support one model or both, but docs and implementation must state which model is authoritative for each restore path.
