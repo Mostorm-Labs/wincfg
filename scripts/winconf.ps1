@@ -46,6 +46,7 @@ $allModules = @(
     @{ Name = "Power";         File = "Power.ps1";         Fn = "Invoke-Power" },
     @{ Name = "ScreenLock";    File = "ScreenLock.ps1";    Fn = "Invoke-ScreenLock" },
     @{ Name = "WindowsUpdate"; File = "WindowsUpdate.ps1"; Fn = "Invoke-WindowsUpdate" },
+    @{ Name = "WindowsRestore"; File = "WindowsRestore.ps1"; Fn = "Invoke-WindowsRestore" },
     @{ Name = "Cortana";       File = "Cortana.ps1";       Fn = "Invoke-Cortana" },
     @{ Name = "Notifications"; File = "Notifications.ps1"; Fn = "Invoke-Notifications" },
     @{ Name = "Privacy";       File = "Privacy.ps1";       Fn = "Invoke-Privacy" },
