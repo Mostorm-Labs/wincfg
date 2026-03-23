@@ -31,7 +31,8 @@
 
 - [ ] **Power.ps1** — 电源管理（高性能计划、禁止睡眠、禁止休眠、禁止显示器关闭、禁用快速启动）
 - [ ] **ScreenLock.ps1** — 屏幕锁定（禁用屏保、超时为0、禁用恢复时锁定、禁用空闲锁）
-- [ ] **WindowsUpdate.ps1** — Windows 更新（禁用自动更新、禁用 wuauserv、禁用 UsoSvc、禁用 DO）
+- [ ] **WindowsUpdate.ps1** — Windows 更新（基于策略禁用自动更新、抑制更新通知、隐藏更新入口、保留 Microsoft Store）
+- [ ] **WindowsRestore.ps1** — Windows 恢复可用性控制（`reagentc /disable` / `reagentc /enable`）
 - [ ] **Cortana.ps1** — Cortana & 搜索（禁用 Cortana、禁用 Web 搜索、隐藏任务栏按钮）
 - [ ] **Notifications.ps1** — 通知（禁用操作中心、禁用 Toast、禁用锁屏通知）
 - [ ] **Privacy.ps1** — 隐私与遥测（遥测级别0、禁用 DiagTrack、禁用活动历史）
@@ -83,6 +84,7 @@
 │   │   ├── Power.ps1
 │   │   ├── ScreenLock.ps1
 │   │   ├── WindowsUpdate.ps1
+│   │   ├── WindowsRestore.ps1
 │   │   ├── Cortana.ps1
 │   │   ├── Notifications.ps1
 │   │   ├── Privacy.ps1

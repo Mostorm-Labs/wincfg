@@ -108,14 +108,60 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 
 ### 3.3 WindowsUpdate.ps1
 
-| Setting                    | Registry Path                                                                 | Name             | Value | Type  |
-| -------------------------- | ----------------------------------------------------------------------------- | ---------------- | ----- | ----- |
-| Disable auto update        | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoUpdate`   | `1`   | DWORD |
-| Delivery Optimization      | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization`              | `DODownloadMode` | `0`   | DWORD |
-| wuauserv start type        | Service `wuauserv`                                                            | 鈥?               | `Disabled` | 鈥?|
-| UsoSvc start type          | Service `UsoSvc`                                                              | 鈥?               | `Disabled` | 鈥?|
+| Setting                    | Registry Path                                                                 | Name                                    | Value | Type  |
+| -------------------------- | ----------------------------------------------------------------------------- | --------------------------------------- | ----- | ----- |
+| Disable auto update        | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoUpdate`                          | `1`   | DWORD |
+| Auto update mode           | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `AUOptions`                             | `1`   | DWORD |
+| Hide update shutdown entry | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAUShutdownOption`                    | `1`   | DWORD |
+| Legacy shutdown fallback   | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAUAsDefaultShutdownOption`           | `1`   | DWORD |
+| Disable auto reboot prompt | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`                  | `NoAutoRebootWithLoggedOnUsers`         | `1`   | DWORD |
+| Disable restart notification | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                  | `SetAutoRestartNotificationDisable`     | `1`   | DWORD |
+| Notification suppression   | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `SetUpdateNotificationLevel`            | `2`   | DWORD |
+| Exclude update drivers     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `ExcludeWUDriversInQualityUpdate`       | `1`   | DWORD |
+| Block OS upgrade           | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`                     | `DisableOSUpgrade`                      | `1`   | DWORD |
+| Preserve Microsoft Store   | `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`                              | `RemoveWindowsStore`                    | `0`   | DWORD |
+| Store auto-download        | `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`                              | `AutoDownload`                          | `4`   | DWORD |
+| Hide Windows Update page   | `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`           | `SettingsPageVisibility`                | `hide:windowsupdate-action` | String |
+| UX restart notifications   | `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`                          | `RestartNotificationsAllowed2`          | `0`   | DWORD |
+| Hide new update UX messages | `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`                         | `HideWUXMessages`                       | `1`   | DWORD |
+| PolicyManager auto update  | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `AllowAutoUpdate`                       | `0`   | DWORD |
+| PolicyManager notifications | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`               | `DoNotShowUpdateNotifications`          | `1`   | DWORD |
+| PolicyManager power option | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `HideUpdatePowerOption`                 | `1`   | DWORD |
+| PolicyManager driver block | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`                | `ExcludeWUDriversInQualityUpdate`       | `1`   | DWORD |
+| PolicyManager Store access | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`                 | `AllowStore`                            | `1`   | DWORD |
+| PolicyManager Store download | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`               | `AutoDownload`                          | `4`   | DWORD |
+| PolicyManager page visibility | `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Settings`           | `SettingsPageVisibility`                | `hide:windowsupdate-action` | String |
 
-### 3.4 Cortana.ps1
+WindowsUpdate module policy:
+
+- `WindowsUpdate` must use policy-compatible registry settings as the primary control mechanism.
+- `WindowsUpdate` must not disable `wuauserv`, `UsoSvc`, or similar core update services as part of the default feature behavior, because Microsoft Store availability must be preserved.
+- Because `WindowsUpdate` now contains a large number of registry-backed settings, the module should consolidate those settings through shared metadata / descriptor-driven execution instead of scattering all policy decisions in module-local imperative code.
+- The module must keep compatibility with newer Windows policy layers by writing:
+  - legacy `Policies\Microsoft\Windows\WindowsUpdate*` keys,
+  - `WindowsUpdate\UX\Settings` keys where applicable,
+  - and `PolicyManager\current\device\*` keys where applicable.
+- Version-specific compatibility keys may be gated by OS build applicability, but the skip behavior must be explicit and logged.
+- The module must execute `gpupdate /force` after applying registry-backed policy changes unless a future implementation note explicitly defines a safe alternative.
+
+### 3.4 WindowsRestore.ps1
+
+| Setting                      | Command                | Value                          |
+| ---------------------------- | ---------------------- | ------------------------------ |
+| Disable restore availability | `reagentc /disable`    | Disable restore availability   |
+| Re-enable restore availability | `reagentc /enable`   | Re-enable restore availability |
+
+WindowsRestore module policy:
+
+- `WindowsRestore` is a dedicated module that manages restore-availability control through `reagentc`.
+- `WindowsRestore` must not be folded into `WindowsUpdate`; the modules belong to the same feature area but have separate responsibilities.
+- `WindowsRestore` must provide:
+  - a disable path using `reagentc /disable`,
+  - and a supported reverse path using `reagentc /enable`.
+- The supported reverse path is a dedicated `WindowsRestore` enable flow, not a Windows Update rollback side effect.
+- The module must log command execution clearly and distinguish normal execution from `-DryRun`.
+
+### 3.5 Cortana.ps1
 
 | Setting              | Registry Path                                                                          | Name                        | Value | Type  |
 | -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- |
@@ -123,7 +169,7 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 | Disable web search   | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer`                                   | `DisableSearchBoxSuggestions` | `1` | DWORD |
 | Hide taskbar button  | `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`                    | `ShowCortanaButton`         | `0`   | DWORD |
 
-### 3.5 Notifications.ps1
+### 3.6 Notifications.ps1
 
 | Setting                    | Registry Path                                                                              | Name                              | Value | Type  |
 | -------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------- | ----- | ----- |
@@ -131,7 +177,7 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 | Disable toast notifications | `HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications`              | `NoToastApplicationNotification`  | `1`   | DWORD |
 | Disable lock screen notifs | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                                         | `DisableLockScreenAppNotifications` | `1` | DWORD |
 
-### 3.6 Privacy.ps1
+### 3.7 Privacy.ps1
 
 | Setting              | Registry Path                                                                 | Name                    | Value | Type  |
 | -------------------- | ----------------------------------------------------------------------------- | ----------------------- | ----- | ----- |
@@ -139,7 +185,7 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 | Activity history     | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`                            | `PublishUserActivities` | `0`   | DWORD |
 | DiagTrack service    | Service `DiagTrack`                                                           | 鈥?                      | `Disabled` | 鈥?|
 
-### 3.7 UI.ps1
+### 3.8 UI.ps1
 
 | Setting              | Registry Path                                                                          | Name                        | Value | Type  |
 | -------------------- | -------------------------------------------------------------------------------------- | --------------------------- | ----- | ----- |
