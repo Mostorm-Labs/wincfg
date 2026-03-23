@@ -14,8 +14,14 @@ winconf.ps1 [-DryRun] [-Verbose] [-Rollback] [-Module <name>]
 | ----------- | ------ | -------------------------------------------------------- |
 | `-DryRun`   | switch | Print what would change; make no writes                  |
 | `-Verbose`  | switch | Print each registry/service operation to console         |
-| `-Rollback` | switch | Restore all values from snapshot, then exit              |
+| `-Rollback` | switch | Restore values from snapshot history, then exit          |
 | `-Module`   | string | Run only the named module (e.g. `Power`, `ScreenLock`)   |
+
+Script interface policy:
+
+- `-Rollback` is the historical rollback mode backed by snapshot data.
+- The product may introduce a future profile-based restore mode that restores to predefined target configurations rather than to recorded historical state.
+- Historical rollback and profile-based restore are distinct behaviors and must not be conflated.
 
 ---
 
@@ -78,6 +84,16 @@ Restore-Snapshot
 - Snapshot file: `C:\ProgramData\WinConf\snapshot.json`
 - Schema per entry: `{ module, key, value, type, timestamp }`
 - `Restore-Snapshot` replays entries in reverse order
+- Snapshot is the historical-state restore mechanism.
+- Snapshot is not the same thing as a predefined restore profile.
+
+### 2.5 Restore Governance
+
+- WinConf must support two restore models:
+  - snapshot-based rollback to recorded historical state
+  - profile-based restore to predefined target state
+- Shared governance must make this distinction explicit in implementation structure, tests, and user-facing behavior.
+- Profile-based restore should reuse shared metadata where feasible so registry, service, and command-driven modules can express reverse behavior through a common abstraction.
 
 ---
 
@@ -241,3 +257,13 @@ On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue
 - Service not found -> log `WARN`, skip (do not throw)
 - `powercfg` exits non-zero -> log `ERROR`, continue remaining steps
 - Snapshot file missing on `-Rollback` -> log `ERROR`, exit with code 1
+
+## 7. Restore Model
+
+- Historical rollback:
+  - driven by snapshot data
+  - intended to return the machine to a recorded prior state
+- Profile-based restore:
+  - driven by predefined product-owned configuration targets
+  - intended to return the machine to a supported baseline or named profile
+- Modules may support one model or both, but docs and implementation must state which model is authoritative for each restore path.
