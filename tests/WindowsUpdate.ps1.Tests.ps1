@@ -10,6 +10,7 @@ Describe 'WindowsUpdate.ps1 policy metadata alignment' {
         ($settings | Where-Object { $_.Name -eq 'NoAutoUpdate' -and $_.Path -match 'WindowsUpdate\\AU$' }).Category | Should Be 'required_policy_backed'
         ($settings | Where-Object { $_.Name -eq 'SettingsPageVisibility' -and $_.Path -match 'Policies\\Explorer$' }).Type | Should Be ([Microsoft.Win32.RegistryValueKind]::String)
         ($settings | Where-Object { $_.Name -eq 'AllowStore' -and $_.Path -match 'PolicyManager\\current\\device\\Store$' }).Value | Should Be 1
+        ($settings | Where-Object { $_.Name -eq 'NoAutoUpdate' -and $_.Path -match 'WindowsUpdate\\AU$' }).Profiles.Default.Action | Should Be 'remove'
     }
 
     It 'covers the full revised Windows Update policy contract' {
@@ -51,6 +52,7 @@ Describe 'WindowsUpdate.ps1 policy metadata alignment' {
         $content | Should Match 'New-RegSettingDescriptor -Name ''NoAutoUpdate'''
         $content | Should Match 'New-RegSettingDescriptor -Name ''SettingsPageVisibility'''
         $content | Should Match 'foreach \(\$setting in Get-WindowsUpdateSettings\)'
+        $content | Should Match 'Invoke-RegSettingProfile -Descriptor \$setting -ProfileName \$RestoreProfile -Module \$module -DryRun:\$DryRun'
         $content | Should Match 'Invoke-RegSettingDescriptor -Descriptor \$setting -Module \$module -DryRun:\$DryRun -Build \$build'
         $content | Should Match 'function Invoke-WindowsUpdatePolicyRefresh'
         $content | Should Match '& gpupdate /force \| Out-Null'

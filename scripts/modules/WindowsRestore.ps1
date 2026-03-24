@@ -76,14 +76,14 @@ function Invoke-WindowsRestoreEnable {
 function Invoke-WindowsRestore {
     param(
         [switch] $DryRun,
-        [switch] $Enable
+        [string] $RestoreProfile = ''
     )
 
     $module = 'WindowsRestore'
 
     Write-Log -Level INFO -Module $module -Message '=== Starting WindowsRestore module ==='
 
-    if ($Enable) {
+    if ($RestoreProfile -eq 'Default') {
         Invoke-WindowsRestoreEnable -DryRun:$DryRun
     } else {
         Invoke-WindowsRestoreDisable -DryRun:$DryRun

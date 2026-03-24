@@ -103,4 +103,131 @@ Describe 'Registry.ps1 Issue #1 behavior' {
 
         Test-Path $script:KeyPath | Should Be $false
     }
+
+    It 'supports module-scoped rollback without touching unrelated snapshot entries' {
+        $uiPath = Join-Path $script:BasePath ([guid]::NewGuid().ToString())
+        New-Item -Path $uiPath -Force | Out-Null
+        New-ItemProperty -Path $uiPath -Name 'UiValue' -Value 1 -PropertyType DWord -Force | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                Module    = 'WindowsUpdate'
+                Key       = 'Service:wuauserv:StartType'
+                Value     = 'Manual'
+                Type      = 'Service'
+                Timestamp = '2026-03-23 11:00:00'
+            }
+            [PSCustomObject]@{
+                Module    = 'UI'
+                Key       = "$uiPath\UiValue"
+                Value     = $null
+                Type      = 'Registry'
+                Timestamp = '2026-03-23 11:00:01'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        { Restore-Snapshot -Module 'UI' } | Should Not Throw
+        Test-Path $uiPath | Should Be $false
+    }
+
+    It 'supports module-scoped rollback when only a single snapshot entry matches' {
+        $wuPath = Join-Path $script:BasePath ([guid]::NewGuid().ToString())
+        New-Item -Path $wuPath -Force | Out-Null
+        New-ItemProperty -Path $wuPath -Name 'UpdateValue' -Value 1 -PropertyType DWord -Force | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                Module    = 'WindowsUpdate'
+                Key       = "$wuPath\UpdateValue"
+                Value     = $null
+                Type      = 'Registry'
+                Timestamp = '2026-03-23 11:30:00'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        { Restore-Snapshot -Module 'WindowsUpdate' } | Should Not Throw
+        Test-Path $wuPath | Should Be $false
+    }
+
+    It 'supports module-scoped rollback under strict mode when only a single snapshot entry matches' {
+        $wuPath = Join-Path $script:BasePath ([guid]::NewGuid().ToString())
+        New-Item -Path $wuPath -Force | Out-Null
+        New-ItemProperty -Path $wuPath -Name 'UpdateValue' -Value 1 -PropertyType DWord -Force | Out-Null
+
+        @(
+            [PSCustomObject]@{
+                Module    = 'WindowsUpdate'
+                Key       = "$wuPath\UpdateValue"
+                Value     = $null
+                Type      = 'Registry'
+                Timestamp = '2026-03-24 09:00:00'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        Set-StrictMode -Version Latest
+        try {
+            { Restore-Snapshot -Module 'WindowsUpdate' } | Should Not Throw
+        } finally {
+            Set-StrictMode -Off
+        }
+
+        Test-Path $wuPath | Should Be $false
+    }
+
+    It 'supports module-scoped rollback under strict mode when no snapshot entries match the requested module' {
+        @(
+            [PSCustomObject]@{
+                Module    = 'UI'
+                Key       = 'Service:wuauserv:StartType'
+                Value     = 'Manual'
+                Type      = 'Service'
+                Timestamp = '2026-03-24 09:05:00'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        Set-StrictMode -Version Latest
+        try {
+            { Restore-Snapshot -Module 'WindowsUpdate' } | Should Not Throw
+        } finally {
+            Set-StrictMode -Off
+        }
+    }
+
+    It 'fails rollback when the snapshot file is missing' {
+        Remove-Item -Path $script:SnapshotPath -ErrorAction SilentlyContinue
+
+        $message = $null
+        try {
+            Restore-Snapshot -Module 'WindowsUpdate'
+        } catch {
+            $message = $_.Exception.Message
+        }
+
+        $message | Should BeLike 'No snapshot file found*'
+
+        $log = Get-Content $script:LogPath -Raw
+        $log | Should Match '\[Rollback\] \[ERROR\] No snapshot file found'
+    }
+
+    It 'supports module-scoped dry-run rollback for a single service snapshot entry under strict mode' {
+        @(
+            [PSCustomObject]@{
+                Module    = 'WindowsUpdate'
+                Key       = 'Service:wuauserv:StartType'
+                Value     = 'Manual'
+                Type      = 'Service'
+                Timestamp = '2026-03-24 09:10:00'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        Set-StrictMode -Version Latest
+        try {
+            { Restore-Snapshot -Module 'WindowsUpdate' -DryRun } | Should Not Throw
+        } finally {
+            Set-StrictMode -Off
+        }
+
+        $log = Get-Content $script:LogPath -Raw
+        $log | Should BeLike '*Would restore service ''wuauserv'' StartType=Manual*'
+    }
 }

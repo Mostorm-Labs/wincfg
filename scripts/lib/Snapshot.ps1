@@ -49,29 +49,65 @@ function Remove-EmptyRegistryKey {
     $item = Get-Item -Path $Path -ErrorAction SilentlyContinue
     if (-not $item) { return }
 
-    $hasSubKeys = ($item.GetSubKeyNames().Count -gt 0)
-    $propertyCount = ($item.Property | Where-Object { $_ -ne '(default)' }).Count
+    $hasSubKeys = (@($item.GetSubKeyNames()).Count -gt 0)
+    $propertyCount = @($item.Property | Where-Object { $_ -ne '(default)' }).Count
 
     if (-not $hasSubKeys -and $propertyCount -eq 0) {
         Remove-Item -Path $Path -Force -ErrorAction SilentlyContinue
     }
 }
 
-function Restore-Snapshot {
-    param([switch] $DryRun)
+function ConvertTo-SnapshotEntryList {
+    param($InputObject)
 
-    if (-not (Test-Path $script:SnapshotFile)) {
-        Write-Log -Level WARN -Module 'Rollback' -Message "No snapshot file found at $($script:SnapshotFile)"
-        return
+    $list = [System.Collections.Generic.List[object]]::new()
+
+    if ($null -eq $InputObject) {
+        return (, $list)
     }
 
-    $entries = @(Get-Content $script:SnapshotFile -Raw | ConvertFrom-Json)
-    [array]::Reverse($entries)
+    foreach ($item in @($InputObject)) {
+        if ($null -ne $item) {
+            $list.Add($item)
+        }
+    }
+
+    return (, $list)
+}
+
+function Restore-Snapshot {
+    param(
+        [switch] $DryRun,
+        [string] $Module = ''
+    )
+
+    if (-not (Test-Path $script:SnapshotFile)) {
+        $message = "No snapshot file found at $($script:SnapshotFile)"
+        Write-Log -Level ERROR -Module 'Rollback' -Message $message
+        throw [System.IO.FileNotFoundException]::new($message, $script:SnapshotFile)
+    }
+
+    $rawEntries = Get-Content $script:SnapshotFile -Raw | ConvertFrom-Json
+    $entries = ConvertTo-SnapshotEntryList -InputObject $rawEntries
+
+    if ($Module -ne '') {
+        $entries = ConvertTo-SnapshotEntryList -InputObject ($entries | Where-Object { $_.Module -eq $Module })
+    }
+
+    if ($entries.Count -gt 1) {
+        [System.Array]::Reverse($entries)
+    }
 
     foreach ($entry in $entries) {
-        if ($entry.Key -like 'Service:*') {
-            $parts = $entry.Key -split ':'
-            $svcName   = $parts[1]
+        $entryKey = [string] $entry.Key
+
+        if ($entryKey -like 'Service:*') {
+            if ($entryKey -notmatch '^Service:(?<Name>[^:]+):StartType$') {
+                Write-Log -Level WARN -Module 'Rollback' -Message "Skipping invalid service snapshot entry key='$entryKey'"
+                continue
+            }
+
+            $svcName   = [string] $Matches.Name
             $startType = $entry.Value
             if ($DryRun) {
                 Write-Log -Level DRY -Module 'Rollback' -Message "Would restore service '$svcName' StartType=$startType"
@@ -80,10 +116,16 @@ function Restore-Snapshot {
                 Write-Log -Level INFO -Module 'Rollback' -Message "Restored service '$svcName' StartType=$startType"
             }
         } else {
-            $regPath = Split-Path $entry.Key -Parent
-            $regName = Split-Path $entry.Key -Leaf
+            $separatorIndex = $entryKey.LastIndexOf('\')
+            if ($separatorIndex -lt 0) {
+                Write-Log -Level WARN -Module 'Rollback' -Message "Skipping invalid registry snapshot entry key='$entryKey'"
+                continue
+            }
+
+            $regPath = [string] $entryKey.Substring(0, $separatorIndex)
+            $regName = [string] $entryKey.Substring($separatorIndex + 1)
             if ($DryRun) {
-                Write-Log -Level DRY -Module 'Rollback' -Message "Would restore $($entry.Key) = $($entry.Value)"
+                Write-Log -Level DRY -Module 'Rollback' -Message "Would restore $entryKey = $($entry.Value)"
             } else {
                 if ($null -eq $entry.Value) {
                     Remove-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue
@@ -92,7 +134,7 @@ function Restore-Snapshot {
                     New-Item -Path $regPath -Force -ErrorAction SilentlyContinue | Out-Null
                     New-ItemProperty -Path $regPath -Name $regName -Value $entry.Value -Force -ErrorAction SilentlyContinue | Out-Null
                 }
-                Write-Log -Level INFO -Module 'Rollback' -Message "Restored $($entry.Key) = $($entry.Value)"
+                Write-Log -Level INFO -Module 'Rollback' -Message "Restored $entryKey = $($entry.Value)"
             }
         }
     }

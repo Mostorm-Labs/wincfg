@@ -16,27 +16,27 @@ function Get-WindowsUpdateSettings {
     $policyManagerSettings  = 'HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Settings'
 
     return @(
-        (New-RegSettingDescriptor -Name 'NoAutoUpdate' -Path $auPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'AUOptions' -Path $auPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'NoAUShutdownOption' -Path $auPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'NoAUAsDefaultShutdownOption' -Path $auPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'NoAutoRebootWithLoggedOnUsers' -Path $auPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'SetAutoRestartNotificationDisable' -Path $wuPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'SetUpdateNotificationLevel' -Path $wuPath -Value 2 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'ExcludeWUDriversInQualityUpdate' -Path $wuPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'DisableOSUpgrade' -Path $wuPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'RemoveWindowsStore' -Path $storePath -Value 0 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'AutoDownload' -Path $storePath -Value 4 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'SettingsPageVisibility' -Path $explorerPath -Value 'hide:windowsupdate-action' -Type String -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'RestartNotificationsAllowed2' -Path $uxPath -Value 0 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'HideWUXMessages' -Path $uxPath -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'AllowAutoUpdate' -Path $policyManagerUpdate -Value 0 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'DoNotShowUpdateNotifications' -Path $policyManagerUpdate -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'HideUpdatePowerOption' -Path $policyManagerUpdate -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'ExcludeWUDriversInQualityUpdate' -Path $policyManagerUpdate -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'AllowStore' -Path $policyManagerStore -Value 1 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'AutoDownload' -Path $policyManagerStore -Value 4 -Category 'required_policy_backed'),
-        (New-RegSettingDescriptor -Name 'SettingsPageVisibility' -Path $policyManagerSettings -Value 'hide:windowsupdate-action' -Type String -Category 'required_policy_backed')
+        (New-RegSettingDescriptor -Name 'NoAutoUpdate' -Path $auPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'AUOptions' -Path $auPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'NoAUShutdownOption' -Path $auPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'NoAUAsDefaultShutdownOption' -Path $auPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'NoAutoRebootWithLoggedOnUsers' -Path $auPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'SetAutoRestartNotificationDisable' -Path $wuPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'SetUpdateNotificationLevel' -Path $wuPath -Value 2 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'ExcludeWUDriversInQualityUpdate' -Path $wuPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'DisableOSUpgrade' -Path $wuPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'RemoveWindowsStore' -Path $storePath -Value 0 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'AutoDownload' -Path $storePath -Value 4 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'SettingsPageVisibility' -Path $explorerPath -Value 'hide:windowsupdate-action' -Type String -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'RestartNotificationsAllowed2' -Path $uxPath -Value 0 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'HideWUXMessages' -Path $uxPath -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'AllowAutoUpdate' -Path $policyManagerUpdate -Value 0 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'DoNotShowUpdateNotifications' -Path $policyManagerUpdate -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'HideUpdatePowerOption' -Path $policyManagerUpdate -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'ExcludeWUDriversInQualityUpdate' -Path $policyManagerUpdate -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'AllowStore' -Path $policyManagerStore -Value 1 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'AutoDownload' -Path $policyManagerStore -Value 4 -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') }),
+        (New-RegSettingDescriptor -Name 'SettingsPageVisibility' -Path $policyManagerSettings -Value 'hide:windowsupdate-action' -Type String -Category 'required_policy_backed' -Profiles @{ Default = (New-RegProfileAction -Action 'remove') })
     )
 }
 
@@ -64,7 +64,10 @@ function Invoke-WindowsUpdatePolicyRefresh {
 }
 
 function Invoke-WindowsUpdate {
-    param([switch] $DryRun)
+    param(
+        [switch] $DryRun,
+        [string] $RestoreProfile = ''
+    )
 
     $module = 'WindowsUpdate'
     $build  = Get-WindowsBuildNumber
@@ -72,7 +75,11 @@ function Invoke-WindowsUpdate {
     Write-Log -Level INFO -Module $module -Message '=== Starting WindowsUpdate module ==='
 
     foreach ($setting in Get-WindowsUpdateSettings) {
-        Invoke-RegSettingDescriptor -Descriptor $setting -Module $module -DryRun:$DryRun -Build $build
+        if ($RestoreProfile -ne '') {
+            Invoke-RegSettingProfile -Descriptor $setting -ProfileName $RestoreProfile -Module $module -DryRun:$DryRun
+        } else {
+            Invoke-RegSettingDescriptor -Descriptor $setting -Module $module -DryRun:$DryRun -Build $build
+        }
     }
 
     Invoke-WindowsUpdatePolicyRefresh -DryRun:$DryRun

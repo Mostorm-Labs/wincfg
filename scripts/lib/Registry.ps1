@@ -126,7 +126,8 @@ function New-RegSettingDescriptor {
         $MaxBuild = $null,
         [bool] $SkipOnUnauthorized = $false,
         [string] $UnsupportedWarningPrefix = 'Skipping unsupported optional setting',
-        [string] $WarningPrefix = 'Skipping optional setting'
+        [string] $WarningPrefix = 'Skipping optional setting',
+        [hashtable] $Profiles = @{}
     )
 
     return [PSCustomObject]@{
@@ -141,6 +142,22 @@ function New-RegSettingDescriptor {
         SkipOnUnauthorized       = $SkipOnUnauthorized
         UnsupportedWarningPrefix = $UnsupportedWarningPrefix
         WarningPrefix            = $WarningPrefix
+        Profiles                 = $Profiles
+    }
+}
+
+function New-RegProfileAction {
+    param(
+        [ValidateSet('set', 'remove')]
+        [string] $Action,
+        $Value = $null,
+        [Microsoft.Win32.RegistryValueKind] $Type = [Microsoft.Win32.RegistryValueKind]::DWord
+    )
+
+    return [PSCustomObject]@{
+        Action = $Action
+        Value  = $Value
+        Type   = $Type
     }
 }
 
@@ -162,6 +179,15 @@ function Test-RegSettingDescriptor {
     if ($Descriptor.Category -notin $validCategories) { return $false }
     if ($null -ne $Descriptor.MinBuild -and $Descriptor.MinBuild -isnot [int]) { return $false }
     if ($null -ne $Descriptor.MaxBuild -and $Descriptor.MaxBuild -isnot [int]) { return $false }
+    if ($null -eq $Descriptor.Profiles) { return $false }
+
+    foreach ($profileName in $Descriptor.Profiles.Keys) {
+        $profile = $Descriptor.Profiles[$profileName]
+        if ([string]::IsNullOrWhiteSpace([string]$profileName)) { return $false }
+        if ($null -eq $profile) { return $false }
+        if ($profile.Action -notin @('set', 'remove')) { return $false }
+        if ($profile.Action -eq 'set' -and -not (Test-RegDefinition -Path $Descriptor.Path -Name $Descriptor.Name -Value $profile.Value -Type $profile.Type)) { return $false }
+    }
 
     return $true
 }
@@ -227,6 +253,46 @@ function Set-RegValue {
     } catch {
         $category = Get-RegFailureCategory -Exception $_.Exception -Path $Path -Name $Name -Value $Value -Type $Type
         $message = New-RegFailureMessage -Category $category -Path $Path -Name $Name -IntendedValue $intendedDisplay -PriorValue $priorDisplay -Exception $_.Exception
+        Write-Log -Level ERROR -Module $Module -Message $message
+        throw [System.InvalidOperationException]::new($message, $_.Exception)
+    }
+}
+
+function Remove-RegValue {
+    param(
+        [string] $Path,
+        [string] $Name,
+        [string] $Module = 'Registry',
+        [switch] $DryRun
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($Name)) {
+        $message = "Registry remove failed (invalid registry definition): path='$Path' name='$Name'. Path and Name are required."
+        Write-Log -Level ERROR -Module $Module -Message $message
+        throw [System.InvalidOperationException]::new($message)
+    }
+
+    $current = Get-RegValue -Path $Path -Name $Name
+    $priorDisplay = Format-RegLogValue -Value $current
+
+    if ($DryRun) {
+        Write-Log -Level DRY -Module $Module -Message "Would remove path='$Path' name='$Name' prior='$priorDisplay'"
+        return
+    }
+
+    Save-Snapshot -Module $Module -Key "$Path\$Name" -CurrentValue $current
+
+    if (-not (Test-Path $Path) -or $null -eq $current) {
+        Write-Log -Level INFO -Module $Module -Message "Remove skipped path='$Path' name='$Name' prior='$priorDisplay'"
+        return
+    }
+
+    try {
+        Remove-ItemProperty -Path $Path -Name $Name -ErrorAction Stop
+        Write-Log -Level INFO -Module $Module -Message "Removed path='$Path' name='$Name' prior='$priorDisplay'"
+    } catch {
+        $category = Get-RegFailureCategory -Exception $_.Exception -Path $Path -Name $Name -Value 0 -Type ([Microsoft.Win32.RegistryValueKind]::DWord)
+        $message = "Registry remove failed ($category): path='$Path' name='$Name' prior='$priorDisplay'. $($_.Exception.Message)"
         Write-Log -Level ERROR -Module $Module -Message $message
         throw [System.InvalidOperationException]::new($message, $_.Exception)
     }
@@ -313,4 +379,36 @@ function Invoke-RegSettingDescriptor {
         -UnsupportedWarningPrefix $Descriptor.UnsupportedWarningPrefix `
         -WarningPrefix $Descriptor.WarningPrefix `
         -SkipOnUnauthorized:$Descriptor.SkipOnUnauthorized
+}
+
+function Invoke-RegSettingProfile {
+    param(
+        [Parameter(Mandatory)]
+        $Descriptor,
+        [Parameter(Mandatory)]
+        [string] $ProfileName,
+        [string] $Module = 'Registry',
+        [switch] $DryRun
+    )
+
+    if (-not (Test-RegSettingDescriptor -Descriptor $Descriptor)) {
+        $message = "Invalid registry setting descriptor for name='$($Descriptor.Name)' path='$($Descriptor.Path)'"
+        Write-Log -Level ERROR -Module $Module -Message $message
+        throw [System.InvalidOperationException]::new($message)
+    }
+
+    if (-not $Descriptor.Profiles.ContainsKey($ProfileName)) {
+        $message = "Restore profile '$ProfileName' is not defined for path='$($Descriptor.Path)' name='$($Descriptor.Name)'"
+        Write-Log -Level ERROR -Module $Module -Message $message
+        throw [System.InvalidOperationException]::new($message)
+    }
+
+    $profile = $Descriptor.Profiles[$ProfileName]
+
+    if ($profile.Action -eq 'remove') {
+        Remove-RegValue -Path $Descriptor.Path -Name $Descriptor.Name -Module $Module -DryRun:$DryRun
+        return
+    }
+
+    Set-RegValue -Path $Descriptor.Path -Name $Descriptor.Name -Value $profile.Value -Type $profile.Type -Module $Module -DryRun:$DryRun
 }
