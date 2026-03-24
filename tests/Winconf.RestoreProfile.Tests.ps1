@@ -15,4 +15,12 @@ Describe 'winconf.ps1 restore mode selection' {
         $content | Should Match 'does not support restore profiles'
         $content | Should Match 'RestoreProfile \$RestoreProfile'
     }
+
+    It 'fails rollback explicitly when snapshot restore fails' {
+        $content = Get-Content -Path "$PSScriptRoot\..\scripts\winconf.ps1" -Raw
+
+        $content | Should Match 'Rollback requested'
+        $content | Should Match 'Rollback failed:'
+        $content | Should Match 'exit 1'
+    }
 }

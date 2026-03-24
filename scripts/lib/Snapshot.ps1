@@ -82,8 +82,9 @@ function Restore-Snapshot {
     )
 
     if (-not (Test-Path $script:SnapshotFile)) {
-        Write-Log -Level WARN -Module 'Rollback' -Message "No snapshot file found at $($script:SnapshotFile)"
-        return
+        $message = "No snapshot file found at $($script:SnapshotFile)"
+        Write-Log -Level ERROR -Module 'Rollback' -Message $message
+        throw [System.IO.FileNotFoundException]::new($message, $script:SnapshotFile)
     }
 
     $rawEntries = Get-Content $script:SnapshotFile -Raw | ConvertFrom-Json

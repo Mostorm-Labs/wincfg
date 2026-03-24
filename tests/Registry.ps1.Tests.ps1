@@ -192,4 +192,42 @@ Describe 'Registry.ps1 Issue #1 behavior' {
             Set-StrictMode -Off
         }
     }
+
+    It 'fails rollback when the snapshot file is missing' {
+        Remove-Item -Path $script:SnapshotPath -ErrorAction SilentlyContinue
+
+        $message = $null
+        try {
+            Restore-Snapshot -Module 'WindowsUpdate'
+        } catch {
+            $message = $_.Exception.Message
+        }
+
+        $message | Should BeLike 'No snapshot file found*'
+
+        $log = Get-Content $script:LogPath -Raw
+        $log | Should Match '\[Rollback\] \[ERROR\] No snapshot file found'
+    }
+
+    It 'supports module-scoped dry-run rollback for a single service snapshot entry under strict mode' {
+        @(
+            [PSCustomObject]@{
+                Module    = 'WindowsUpdate'
+                Key       = 'Service:wuauserv:StartType'
+                Value     = 'Manual'
+                Type      = 'Service'
+                Timestamp = '2026-03-24 09:10:00'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        Set-StrictMode -Version Latest
+        try {
+            { Restore-Snapshot -Module 'WindowsUpdate' -DryRun } | Should Not Throw
+        } finally {
+            Set-StrictMode -Off
+        }
+
+        $log = Get-Content $script:LogPath -Raw
+        $log | Should BeLike '*Would restore service ''wuauserv'' StartType=Manual*'
+    }
 }

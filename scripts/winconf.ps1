@@ -73,9 +73,14 @@ if ($RestoreProfile -ne "" -and $Module -notin @('WindowsUpdate', 'WindowsRestor
 # ── Rollback branch ──────────────────────────────────────────────────────────
 if ($Rollback) {
     Write-Log -Level INFO -Module MAIN -Message "Rollback requested"
-    Restore-Snapshot -DryRun:$DryRun -Module $Module
-    Write-Log -Level INFO -Module MAIN -Message "Rollback complete"
-    exit 0
+    try {
+        Restore-Snapshot -DryRun:$DryRun -Module $Module
+        Write-Log -Level INFO -Module MAIN -Message "Rollback complete"
+        exit 0
+    } catch {
+        Write-Log -Level ERROR -Module MAIN -Message "Rollback failed: $($_.Exception.Message)"
+        exit 1
+    }
 }
 
 foreach ($m in $allModules) {
