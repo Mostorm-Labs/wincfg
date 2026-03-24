@@ -49,8 +49,8 @@ function Remove-EmptyRegistryKey {
     $item = Get-Item -Path $Path -ErrorAction SilentlyContinue
     if (-not $item) { return }
 
-    $hasSubKeys = ($item.GetSubKeyNames().Count -gt 0)
-    $propertyCount = ($item.Property | Where-Object { $_ -ne '(default)' }).Count
+    $hasSubKeys = (@($item.GetSubKeyNames()).Count -gt 0)
+    $propertyCount = @($item.Property | Where-Object { $_ -ne '(default)' }).Count
 
     if (-not $hasSubKeys -and $propertyCount -eq 0) {
         Remove-Item -Path $Path -Force -ErrorAction SilentlyContinue
@@ -63,7 +63,7 @@ function ConvertTo-SnapshotEntryList {
     $list = [System.Collections.Generic.List[object]]::new()
 
     if ($null -eq $InputObject) {
-        return $list
+        return (, $list)
     }
 
     foreach ($item in @($InputObject)) {
@@ -72,7 +72,7 @@ function ConvertTo-SnapshotEntryList {
         }
     }
 
-    return $list
+    return (, $list)
 }
 
 function Restore-Snapshot {
