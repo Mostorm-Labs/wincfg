@@ -173,4 +173,23 @@ Describe 'Registry.ps1 Issue #1 behavior' {
 
         Test-Path $wuPath | Should Be $false
     }
+
+    It 'supports module-scoped rollback under strict mode when no snapshot entries match the requested module' {
+        @(
+            [PSCustomObject]@{
+                Module    = 'UI'
+                Key       = 'Service:wuauserv:StartType'
+                Value     = 'Manual'
+                Type      = 'Service'
+                Timestamp = '2026-03-24 09:05:00'
+            }
+        ) | ConvertTo-Json -Depth 5 | Set-Content -Path $script:SnapshotPath -Encoding UTF8
+
+        Set-StrictMode -Version Latest
+        try {
+            { Restore-Snapshot -Module 'WindowsUpdate' } | Should Not Throw
+        } finally {
+            Set-StrictMode -Off
+        }
+    }
 }

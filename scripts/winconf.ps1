@@ -99,7 +99,7 @@ foreach ($m in $allModules) {
 }
 
 # ── Summary ───────────────────────────────────────────────────────────────────
-if ($failed.Count -gt 0) {
+if (@($failed).Count -gt 0) {
     Write-Log -Level WARN -Module MAIN -Message "Completed with errors in: $($failed -join ', ')"
     exit 1
 } else {
