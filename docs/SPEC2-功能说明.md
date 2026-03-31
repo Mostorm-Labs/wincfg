@@ -525,7 +525,276 @@
 - 建议配合网络隔离和访问控制使用
 
 ### 测试流程
+
 1. 使用 `-DryRun` 预览变更
 2. 在测试设备上完整执行
 3. 验证功能是否符合预期
 4. 生产环境部署前创建系统还原点
+
+---
+
+## 12. Windows 版本注册表原始键值对照表
+
+本节提供 Windows 10/11 不同版本下的注册表默认值，供技术人员对照检查。
+
+**版本说明:**
+- **23H2**: Windows 11 23H2 (Build 22631)
+- **24H2**: Windows 11 24H2 (Build 26100)
+- **25H2**: Windows 11 25H2 (Build 27xxx，预览版)
+
+**符号说明:**
+- `不存在` - 该键或值在默认安装中不存在
+- `N/A` - 不适用于该版本
+- `(用户相关)` - 值因用户配置而异
+
+---
+
+### 12.1 电源管理 (Power)
+
+#### HiberbootEnabled - 快速启动
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power` | `HiberbootEnabled` | `1` (DWORD) | `1` (DWORD) | `1` (DWORD) |
+
+**说明:** 所有版本默认启用快速启动
+
+---
+
+### 12.2 屏幕锁定 (ScreenLock)
+
+#### 屏幕保护程序设置
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKCU:\Control Panel\Desktop` | `ScreenSaveActive` | `1` (String) | `1` (String) | `1` (String) |
+| `HKCU:\Control Panel\Desktop` | `ScreenSaveTimeOut` | `900` (String) | `900` (String) | `900` (String) |
+| `HKCU:\Control Panel\Desktop` | `ScreenSaverIsSecure` | `0` (String) | `0` (String) | `0` (String) |
+| `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System` | `InactivityTimeoutSecs` | 不存在 | 不存在 | 不存在 |
+
+**说明:**
+- 默认屏保超时 900 秒（15 分钟）
+- 默认不要求屏保恢复时输入密码
+- GPO 空闲锁定默认未配置
+
+---
+
+### 12.3 Windows 更新 (WindowsUpdate)
+
+#### 自动更新策略
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU` | `NoAutoUpdate` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU` | `AUOptions` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU` | `NoAUShutdownOption` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU` | `NoAUAsDefaultShutdownOption` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU` | `NoAutoRebootWithLoggedOnUsers` | 不存在 | 不存在 | 不存在 |
+
+**说明:** 默认情况下，所有策略键不存在，表示未配置（使用系统默认行为）
+
+#### 更新通知和重启
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate` | `SetAutoRestartNotificationDisable` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate` | `SetUpdateNotificationLevel` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate` | `ExcludeWUDriversInQualityUpdate` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate` | `DisableOSUpgrade` | 不存在 | 不存在 | 不存在 |
+
+#### Microsoft Store 策略
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore` | `RemoveWindowsStore` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore` | `AutoDownload` | 不存在 | 不存在 | 不存在 |
+
+#### 设置页面可见性
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer` | `SettingsPageVisibility` | 不存在 | 不存在 | 不存在 |
+
+#### UX 设置
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings` | `RestartNotificationsAllowed2` | `1` (DWORD) | `1` (DWORD) | `1` (DWORD) |
+| `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings` | `HideWUXMessages` | 不存在 | 不存在 | 不存在 |
+
+**说明:** 默认允许重启通知
+
+#### PolicyManager 策略（MDM/Intune）
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update` | `AllowAutoUpdate` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update` | `DoNotShowUpdateNotifications` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update` | `HideUpdatePowerOption` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update` | `ExcludeWUDriversInQualityUpdate` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store` | `AllowStore` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store` | `AutoDownload` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Settings` | `SettingsPageVisibility` | 不存在 | 不存在 | 不存在 |
+
+**说明:** PolicyManager 路径通常由 MDM/Intune 管理，默认不存在
+
+---
+
+### 12.4 Cortana 和搜索 (Cortana)
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search` | `AllowCortana` | 不存在 | 不存在 | 不存在 |
+| `HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer` | `DisableSearchBoxSuggestions` | 不存在 | 不存在 | 不存在 |
+| `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced` | `ShowCortanaButton` | `0` (DWORD) | `0` (DWORD) | `0` (DWORD) |
+
+**说明:**
+- Windows 11 默认不显示 Cortana 按钮
+- 策略键默认不存在（未配置）
+
+---
+
+### 12.5 通知 (Notifications)
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer` | `DisableNotificationCenter` | 不存在 | 不存在 | 不存在 |
+| `HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications` | `NoToastApplicationNotification` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System` | `DisableLockScreenAppNotifications` | 不存在 | 不存在 | 不存在 |
+
+**说明:** 默认启用所有通知功能
+
+---
+
+### 12.6 隐私和遥测 (Privacy)
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection` | `AllowTelemetry` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System` | `PublishUserActivities` | 不存在 | 不存在 | 不存在 |
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System` | `UploadUserActivities` | 不存在 | 不存在 | 不存在 |
+
+**说明:**
+- 默认遥测级别：家庭版 = 完整，专业版/企业版 = 完整（可配置）
+- 策略键不存在表示使用系统默认行为
+
+#### DiagTrack 服务
+
+| 服务名称 | 23H2 默认启动类型 | 24H2 默认启动类型 | 25H2 默认启动类型 |
+|---------|-----------------|-----------------|-----------------|
+| `DiagTrack` | Automatic | Automatic | Automatic |
+
+---
+
+### 12.7 界面优化 (UI)
+
+#### 任务栏按钮
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced` | `ShowTaskViewButton` | `1` (DWORD) | `1` (DWORD) | `1` (DWORD) |
+
+**说明:** 默认显示任务视图按钮
+
+#### 资讯和兴趣 / Widgets
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds` | `EnableFeeds` | 不存在 | 不存在 | 不存在 |
+| `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds` | `ShellFeedsTaskbarViewMode` | `2` (DWORD) | `2` (DWORD) | `2` (DWORD) |
+| `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced` | `TaskbarDa` | `1` (DWORD) | `1` (DWORD) | `1` (DWORD) |
+
+**说明:**
+- `ShellFeedsTaskbarViewMode`: `0`=显示图标和文本, `1`=仅图标, `2`=隐藏
+- `TaskbarDa`: `0`=隐藏小组件, `1`=显示小组件
+- Windows 11 默认显示小组件按钮
+
+#### Meet Now / Teams
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer` | `HideMeetNow` | 不存在 | 不存在 | 不存在 |
+
+**说明:** Windows 11 已移除 Meet Now 功能，该设置不再适用
+
+#### 边缘手势
+
+| 注册表路径 | 键名 | 23H2 默认值 | 24H2 默认值 | 25H2 默认值 |
+|-----------|------|------------|------------|------------|
+| `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ImmersiveShell\EdgeUI` | `DisabledEdgeSwipe` | 不存在 | 不存在 | 不存在 |
+
+**说明:** 默认启用边缘手势（值不存在或为 `0`）
+
+---
+
+### 12.8 版本差异说明
+
+#### Windows 11 23H2 vs 24H2 主要差异
+
+1. **Windows Update 策略层:**
+   - 24H2 增强了 PolicyManager 策略支持
+   - 部分 UX 设置路径在 24H2 中有调整
+
+2. **UI 元素:**
+   - 24H2 对小组件面板进行了重新设计
+   - 任务栏布局选项有所变化
+
+3. **遥测和隐私:**
+   - 24H2 增加了更细粒度的隐私控制选项
+   - 诊断数据收集机制有优化
+
+#### 检查当前系统版本
+
+```powershell
+# 查看 Windows 版本
+Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsBuildNumber
+
+# 或使用
+[System.Environment]::OSVersion.Version
+```
+
+#### 验证注册表键值
+
+```powershell
+# 检查键是否存在
+Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
+
+# 读取键值
+Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power" -Name "HiberbootEnabled" -ErrorAction SilentlyContinue
+
+# 列出路径下所有值
+Get-ItemProperty -Path "HKCU:\Control Panel\Desktop"
+```
+
+---
+
+### 12.9 技术人员检查清单
+
+使用以下 PowerShell 脚本快速检查关键配置项：
+
+```powershell
+# 检查脚本 - 保存为 Check-WinConfSettings.ps1
+
+$checks = @(
+    @{Path="HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power"; Name="HiberbootEnabled"; Expected=0},
+    @{Path="HKCU:\Control Panel\Desktop"; Name="ScreenSaveActive"; Expected="0"},
+    @{Path="HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"; Name="NoAutoUpdate"; Expected=1},
+    @{Path="HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection"; Name="AllowTelemetry"; Expected=0}
+)
+
+foreach ($check in $checks) {
+    $value = Get-ItemProperty -Path $check.Path -Name $check.Name -ErrorAction SilentlyContinue
+    if ($value) {
+        $actual = $value.($check.Name)
+        $status = if ($actual -eq $check.Expected) { "✓ 正确" } else { "✗ 不匹配" }
+        Write-Host "$status - $($check.Path)\$($check.Name) = $actual (期望: $($check.Expected))"
+    } else {
+        Write-Host "✗ 不存在 - $($check.Path)\$($check.Name)"
+    }
+}
+```
+
+**使用方法:**
+```powershell
+.\Check-WinConfSettings.ps1
+```
