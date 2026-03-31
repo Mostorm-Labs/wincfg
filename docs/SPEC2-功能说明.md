@@ -1,8 +1,7 @@
-# SPEC2 - Windows 配置项功能说明
-
 **日期:** 2026-03-31
 
 本文档说明各配置项如何影响 Windows 功能，面向最终用户和运维人员。
+
 
 ---
 
@@ -46,6 +45,7 @@
 - **注册表路径:** `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power`
 - **键名:** `HiberbootEnabled`
 - **值:** `0` (DWORD)
+- **原始值:** `1` (DWORD)
 - **功能影响:** 关闭混合启动模式
 - **适用场景:** 避免休眠残留导致的状态异常
 
@@ -53,6 +53,7 @@
 - ✅ 设备随时可用，无需唤醒
 - ✅ 避免会议中断
 - ⚠️ 功耗增加
+
 
 ---
 
@@ -66,6 +67,7 @@
 - **注册表路径:** `HKCU:\Control Panel\Desktop`
 - **键名:** `ScreenSaveActive`
 - **值:** `0` (String)
+- **原始值:** `1` (DWORD)
 - **功能影响:** 不会触发屏保动画
 - **适用场景:** 会议室设备不需要屏保
 
@@ -73,6 +75,7 @@
 - **注册表路径:** `HKCU:\Control Panel\Desktop`
 - **键名:** `ScreenSaveTimeOut`
 - **值:** `0` (String)
+- **原始值:** 不存在
 - **功能影响:** 永不启动屏保
 - **适用场景:** 保持内容持续显示
 
@@ -80,6 +83,7 @@
 - **注册表路径:** `HKCU:\Control Panel\Desktop`
 - **键名:** `ScreenSaverIsSecure`
 - **值:** `0` (String)
+- **原始值:** 不存在
 - **功能影响:** 从睡眠/屏保恢复时不要求密码
 - **适用场景:** 无人值守设备快速恢复
 
@@ -87,6 +91,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System`
 - **键名:** `InactivityTimeoutSecs`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 系统不会因空闲自动锁定
 - **适用场景:** 避免会议期间锁屏
 
@@ -94,6 +99,7 @@
 
 - ✅ 设备不会自动锁定
 - ⚠️ 降低安全性，仅适用于物理安全的环境
+
 
 ---
 
@@ -107,6 +113,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`
 - **键名:** `NoAutoUpdate`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 系统不会自动下载和安装更新
 - **适用场景:** 避免会议期间更新中断
 
@@ -114,6 +121,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`
 - **键名:** `AUOptions`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 仅通知有更新，不自动安装
 - **适用场景:** 管理员手动控制更新时机
 
@@ -121,6 +129,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`
 - **键名:** `NoAUShutdownOption`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 关机菜单不显示"更新并关机"
 - **适用场景:** 防止用户误触发更新
 
@@ -128,6 +137,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`
 - **键名:** `NoAUAsDefaultShutdownOption`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 关机时不默认选择更新选项
 - **适用场景:** 确保快速关机
 
@@ -135,6 +145,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`
 - **键名:** `NoAutoRebootWithLoggedOnUsers`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 不弹出重启倒计时窗口
 - **适用场景:** 避免会议期间弹窗干扰
 
@@ -142,6 +153,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`
 - **键名:** `SetAutoRestartNotificationDisable`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 不显示"需要重启"通知
 - **适用场景:** 减少通知干扰
 
@@ -149,6 +161,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`
 - **键名:** `SetUpdateNotificationLevel`
 - **值:** `2` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 最小化更新相关通知
 - **适用场景:** 保持界面清爽
 
@@ -156,6 +169,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`
 - **键名:** `ExcludeWUDriversInQualityUpdate`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 不通过 Windows Update 更新驱动
 - **适用场景:** 避免驱动兼容性问题
 
@@ -163,6 +177,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`
 - **键名:** `DisableOSUpgrade`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 不升级到新的 Windows 大版本
 - **适用场景:** 保持系统稳定性
 
@@ -170,6 +185,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`
 - **键名:** `RemoveWindowsStore`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** 允许 Store 应用更新
 - **适用场景:** 保持应用商店可用
 
@@ -177,6 +193,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore`
 - **键名:** `AutoDownload`
 - **值:** `4` (DWORD)
+- **原始值:** 不存在(25h2版本中，全部整合到了PolicyManager\device\Update\AllowAutoUpdate）
 - **功能影响:** Store 应用不自动下载更新
 - **适用场景:** 管理员控制应用更新
 
@@ -184,6 +201,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`
 - **键名:** `SettingsPageVisibility`
 - **值:** `hide:windowsupdate-action` (String)
+- **原始值:** 不存在
 - **功能影响:** 设置中隐藏 Windows Update 页面
 - **适用场景:** 防止用户误操作
 
@@ -191,6 +209,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`
 - **键名:** `RestartNotificationsAllowed2`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 禁用新版 UX 重启通知
 - **适用场景:** 减少通知干扰
 
@@ -198,6 +217,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\WindowsUpdate\UX\Settings`
 - **键名:** `HideWUXMessages`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 隐藏 Windows Update 体验消息
 - **适用场景:** 保持界面清爽
 
@@ -205,6 +225,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`
 - **键名:** `AllowAutoUpdate`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 通过 PolicyManager 禁用自动更新
 - **适用场景:** 新版 Windows 策略兼容
 
@@ -212,6 +233,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`
 - **键名:** `DoNotShowUpdateNotifications`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 不显示更新通知
 - **适用场景:** 减少通知干扰
 
@@ -219,6 +241,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`
 - **键名:** `HideUpdatePowerOption`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 隐藏电源菜单中的更新选项
 - **适用场景:** 简化电源菜单
 
@@ -226,6 +249,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Update`
 - **键名:** `ExcludeWUDriversInQualityUpdate`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 通过 PolicyManager 排除驱动更新
 - **适用场景:** 新版 Windows 策略兼容
 
@@ -233,6 +257,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`
 - **键名:** `AllowStore`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 允许访问 Microsoft Store
 - **适用场景:** 保持应用商店可用
 
@@ -240,6 +265,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Store`
 - **键名:** `AutoDownload`
 - **值:** `4` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** Store 应用手动下载
 - **适用场景:** 管理员控制应用更新
 
@@ -247,6 +273,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\Settings`
 - **键名:** `SettingsPageVisibility`
 - **值:** `hide:windowsupdate-action` (String)
+- **原始值:** 不存在
 - **功能影响:** 隐藏 Windows Update 设置页面
 - **适用场景:** 防止用户误操作
 
@@ -261,6 +288,7 @@
 
 - 不会禁用 Windows Update 服务，Microsoft Store 仍可用
 - 需要定期执行 `gpupdate /force` 使策略生效
+
 
 ---
 
@@ -285,6 +313,7 @@
 - ✅ 防止误操作重置系统
 - ⚠️ 系统故障时无法使用恢复功能
 
+
 ---
 
 ## 5. Cortana 和搜索 (Cortana)
@@ -297,6 +326,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search`
 - **键名:** `AllowCortana`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 关闭语音助手功能
 - **适用场景:** 会议室设备不需要语音助手
 
@@ -304,6 +334,7 @@
 - **注册表路径:** `HKCU:\SOFTWARE\Policies\Microsoft\Windows\Explorer`
 - **键名:** `DisableSearchBoxSuggestions`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 搜索框不显示网络结果
 - **适用场景:** 减少干扰，提升隐私
 
@@ -311,6 +342,7 @@
 - **注册表路径:** `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`
 - **键名:** `ShowCortanaButton`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 任务栏不显示 Cortana 图标
 - **适用场景:** 简化界面
 
@@ -319,6 +351,7 @@
 - ✅ 任务栏更简洁
 - ✅ 搜索更快速（仅本地）
 - ⚠️ 无法使用语音助手
+
 
 ---
 
@@ -332,6 +365,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer`
 - **键名:** `DisableNotificationCenter`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 无法打开通知面板
 - **适用场景:** 避免通知干扰
 
@@ -339,6 +373,7 @@
 - **注册表路径:** `HKCU:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications`
 - **键名:** `NoToastApplicationNotification`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 不显示弹出式通知
 - **适用场景:** 会议期间零弹窗
 
@@ -346,6 +381,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`
 - **键名:** `DisableLockScreenAppNotifications`
 - **值:** `1` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 锁屏界面不显示通知
 - **适用场景:** 保护隐私
 
@@ -353,6 +389,7 @@
 
 - ✅ 会议期间无弹窗干扰
 - ⚠️ 无法接收系统通知
+
 
 ---
 
@@ -366,6 +403,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection`
 - **键名:** `AllowTelemetry`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 仅发送必需的诊断数据
 - **适用场景:** 最小化数据上传
 
@@ -373,6 +411,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`
 - **键名:** `PublishUserActivities`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 不记录应用使用历史
 - **适用场景:** 保护隐私
 
@@ -380,6 +419,7 @@
 - **注册表路径:** `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System`
 - **键名:** `UploadUserActivities`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 不上传活动数据到云端
 - **适用场景:** 减少网络流量
 
@@ -395,6 +435,7 @@
 - ✅ 提升隐私保护
 - ⚠️ 时间线功能不可用
 
+
 ---
 
 ## 8. 界面优化 (UI)
@@ -407,6 +448,7 @@
 - **注册表路径:** `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced`
 - **键名:** `ShowTaskViewButton`
 - **值:** `0` (DWORD)
+- **原始值:** 不存在
 - **功能影响:** 任务栏不显示多任务按钮
 - **适用场景:** 简化界面
 
@@ -421,6 +463,7 @@
 - **注册表路径:** `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Feeds`
 - **键名:** `ShellFeedsTaskbarViewMode`
 - **值:** `2` (DWORD)
+无法被设置
 - **功能影响:** 任务栏不显示新闻天气（用户级别）
 - **适用场景:** 减少干扰
 - **版本兼容性:** Windows 版本相关
@@ -437,6 +480,7 @@
 - **注册表路径:** `HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer`
 - **键名:** `HideMeetNow`
 - **值:** `1` (DWORD)
+无法被设置
 - **功能影响:** 任务栏不显示 Teams 快捷入口
 - **适用场景:** 使用专用会议软件
 
@@ -458,6 +502,7 @@
 - 部分设置仅在特定 Windows 版本有效
 - 不支持的设置会记录警告并跳过
 
+
 ---
 
 ## 9. 后台服务 (winconf-agent)
@@ -474,6 +519,7 @@
 **适用场景:**
 - 防止用户或其他程序修改配置
 - 确保设备始终处于预期状态
+
 
 ---
 
@@ -503,6 +549,7 @@
 - 设备退役前恢复标准配置
 - 切换到不同的使用场景
 
+
 ---
 
 ## 11. 使用建议
@@ -531,6 +578,7 @@
 3. 验证功能是否符合预期
 4. 生产环境部署前创建系统还原点
 
+
 ---
 
 ## 12. Windows 版本注册表原始键值对照表
@@ -547,6 +595,7 @@
 - `N/A` - 不适用于该版本
 - `(用户相关)` - 值因用户配置而异
 
+
 ---
 
 ### 12.1 电源管理 (Power)
@@ -558,6 +607,7 @@
 | `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power` | `HiberbootEnabled` | `1` (DWORD) | `1` (DWORD) | `1` (DWORD) |
 
 **说明:** 所有版本默认启用快速启动
+
 
 ---
 
@@ -576,6 +626,7 @@
 - 默认屏保超时 900 秒（15 分钟）
 - 默认不要求屏保恢复时输入密码
 - GPO 空闲锁定默认未配置
+
 
 ---
 
@@ -638,6 +689,7 @@
 
 **说明:** PolicyManager 路径通常由 MDM/Intune 管理，默认不存在
 
+
 ---
 
 ### 12.4 Cortana 和搜索 (Cortana)
@@ -652,6 +704,7 @@
 - Windows 11 默认不显示 Cortana 按钮
 - 策略键默认不存在（未配置）
 
+
 ---
 
 ### 12.5 通知 (Notifications)
@@ -663,6 +716,7 @@
 | `HKLM:\SOFTWARE\Policies\Microsoft\Windows\System` | `DisableLockScreenAppNotifications` | 不存在 | 不存在 | 不存在 |
 
 **说明:** 默认启用所有通知功能
+
 
 ---
 
@@ -683,6 +737,7 @@
 | 服务名称 | 23H2 默认启动类型 | 24H2 默认启动类型 | 25H2 默认启动类型 |
 |---------|-----------------|-----------------|-----------------|
 | `DiagTrack` | Automatic | Automatic | Automatic |
+
 
 ---
 
@@ -725,6 +780,7 @@
 
 **说明:** 默认启用边缘手势（值不存在或为 `0`）
 
+
 ---
 
 ### 12.8 版本差异说明
@@ -745,26 +801,31 @@
 
 #### 检查当前系统版本
 
-```powershell
-# 查看 Windows 版本
+```JSON
+powershell```
+查看 Windows 版本
 Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsBuildNumber
 
-# 或使用
+或使用
 [System.Environment]::OSVersion.Version
+```JSON
 ```
 
 #### 验证注册表键值
 
-```powershell
-# 检查键是否存在
+```JSON
+powershell```
+检查键是否存在
 Test-Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
 
-# 读取键值
+读取键值
 Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power" -Name "HiberbootEnabled" -ErrorAction SilentlyContinue
 
-# 列出路径下所有值
+列出路径下所有值
 Get-ItemProperty -Path "HKCU:\Control Panel\Desktop"
+```JSON
 ```
+
 
 ---
 
@@ -772,8 +833,9 @@ Get-ItemProperty -Path "HKCU:\Control Panel\Desktop"
 
 使用以下 PowerShell 脚本快速检查关键配置项：
 
-```powershell
-# 检查脚本 - 保存为 Check-WinConfSettings.ps1
+```JSON
+powershell```
+检查脚本 - 保存为 Check-WinConfSettings.ps1
 
 $checks = @(
     @{Path="HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power"; Name="HiberbootEnabled"; Expected=0},
@@ -792,9 +854,12 @@ foreach ($check in $checks) {
         Write-Host "✗ 不存在 - $($check.Path)\$($check.Name)"
     }
 }
+```JSON
 ```
 
 **使用方法:**
-```powershell
+```JSON
+powershell```
 .\Check-WinConfSettings.ps1
+```JSON
 ```
