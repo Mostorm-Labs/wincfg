@@ -1,9 +1,9 @@
-# WindowsRestore.ps1 - Restore availability control
+﻿# WindowsRestore.ps1 - Restore availability control
 # Depends on: Logger.ps1
 
 function Get-WindowsRestoreAvailabilityState {
     try {
-        $output = reagentc /info | Out-String
+        $output = reagentc /info 2>&1 | Out-String
     } catch {
         return $null
     }
@@ -82,6 +82,10 @@ function Invoke-WindowsRestore {
     $module = 'WindowsRestore'
 
     Write-Log -Level INFO -Module $module -Message '=== Starting WindowsRestore module ==='
+
+    if (-not $DryRun) {
+        Save-Snapshot -Module $module -Key 'WindowsRE:Status' -CurrentValue (Get-WindowsRestoreAvailabilityState) -Type 'WindowsRE'
+    }
 
     if ($RestoreProfile -eq 'Default') {
         Invoke-WindowsRestoreEnable -DryRun:$DryRun

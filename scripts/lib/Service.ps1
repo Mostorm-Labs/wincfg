@@ -37,6 +37,10 @@ function Stop-ServiceIfRunning {
     $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue
     if (-not $svc) { return }
 
+    if (-not $DryRun) {
+        Save-Snapshot -Module $Module -Key "Service:$Name:Status" -CurrentValue $svc.Status.ToString() -Type 'ServiceStatus'
+    }
+
     if ($svc.Status -eq "Running") {
         if ($DryRun) {
             Write-Log -Level DRY -Module $Module -Message "Would stop service '$Name'"

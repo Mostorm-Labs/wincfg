@@ -25,6 +25,16 @@ Script interface policy:
 - Historical rollback and profile-based restore are distinct behaviors and must not be conflated.
 - `-Rollback` and `-RestoreProfile` must not be combined in the same invocation.
 
+Desktop interface:
+
+- `WinConf.exe` is an x64 .NET Framework launcher with a `requireAdministrator` manifest.
+- The launcher starts `scripts\WinConf.Gui.ps1` in Windows PowerShell with `-STA` and keeps the project root as its working directory.
+- The interface runs one module by starting `scripts\winconf.ps1 -Module <name> -Verbose`; preview adds `-DryRun`.
+- After a successful non-preview run, the interface enables restore and starts `scripts\winconf.ps1 -Rollback -Module <name> -Verbose`; preview can also dry-run that rollback.
+- Module execution occurs in a child process so the Windows Forms message loop remains responsive.
+- The interface defaults to `en-US`; the upper-right language selector switches all presentation strings and module metadata to `zh-CN`.
+- `WinConf.exe` must remain next to the `scripts` directory and is intentionally retained in version control.
+
 ---
 
 ## 2. Lib Layer
@@ -109,6 +119,29 @@ Restore-Snapshot
 - Shared governance must make this distinction explicit in implementation structure, tests, and user-facing behavior.
 - Profile-based restore should reuse shared metadata where feasible so registry, service, and command-driven modules can express reverse behavior through a common abstraction.
 
+### 2.6 State.ps1
+
+```powershell
+Get-WinConfModuleState -Module <string> [-Language <en-US|zh-CN>]
+```
+
+- Performs read-only probes for all eight module names.
+- Returns rows containing `Key`, `Label`, `RawCurrent`, `RawTarget`, `Current`, `Target`, `Compliant`, `Description`, and `NotApplicable`.
+- Registry-driven modules read the same target descriptors where those descriptors already exist.
+- Power probes use `powercfg` plus the corresponding registry values; Privacy also reads the `DiagTrack` service; WindowsRestore reads `reagentc /info`.
+- The desktop interface records one state collection immediately before execution and another after the child process exits, then joins rows by `Key`.
+- A restore comparison uses the in-memory pre-run state for an immediate restore and falls back to the persisted module snapshot after the interface is reopened.
+
+### 2.7 WinConf.Catalog.ps1
+
+```powershell
+Get-WinConfModuleCatalog [-Language <en-US|zh-CN>]
+```
+
+- Returns the eight module names in main-script order.
+- Each entry contains `Name`, `DisplayName`, `Description`, and `Notice` for presentation in the desktop interface.
+- The default language is `en-US`; `zh-CN` selects the Chinese presentation fields.
+
 ---
 
 ## 3. Module Layer
@@ -126,6 +159,8 @@ Every module exposes one public function: `Invoke-<ModuleName> [-DryRun]`
 | Display timeout DC   | `powercfg /change monitor-timeout-dc 0`                                   | 0 (never)          | Machine default / OEM default |
 | Hibernate            | `powercfg /hibernate off`                                                 | `N/A`              | Machine default |
 | Fast startup         | `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power` `HiberbootEnabled` DWORD `0` | 0 | Machine default (commonly `1`) |
+
+Before a non-preview Power run, the module snapshots the active scheme, the High Performance AC sleep/display indexes, hibernation state, and Fast Startup state so rollback can restore command-driven changes as well as registry values.
 
 ### 3.2 ScreenLock.ps1
 
@@ -261,6 +296,9 @@ On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue
 | Log file        | `C:\ProgramData\WinConf\winconf.log`    |
 | Snapshot        | `C:\ProgramData\WinConf\snapshot.json`  |
 | Watch list      | `C:\ProgramData\WinConf\agent-watch.json` |
+| Desktop launcher | `<project-root>\WinConf.exe`             |
+| Desktop script   | `<project-root>\scripts\WinConf.Gui.ps1` |
+| Module metadata  | `<project-root>\scripts\WinConf.Catalog.ps1` |
 
 ---
 
@@ -274,6 +312,10 @@ On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue
 - Service not found -> log `WARN`, skip (do not throw)
 - `powercfg` exits non-zero -> log `ERROR`, continue remaining steps
 - Snapshot file missing on `-Rollback` -> log `ERROR`, exit with code 1
+- Desktop state probe unavailable -> show `未设置` without writing a fallback value
+- Desktop child process exits non-zero -> keep the before/after data, select the log tab, and show the exit code
+- No module snapshot is available -> disable restore and show an informational message
+- Desktop script missing beside the launcher -> show an error dialog and exit with code 2
 
 ## 7. Restore Model
 

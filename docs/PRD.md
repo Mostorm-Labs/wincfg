@@ -65,6 +65,18 @@ Zoom Rooms requires a specific Windows configuration to operate reliably as an a
 |----|-------------|---------------------|
 | UI-01 | Disable gestures on the edge of the screen | Edge swipe and action center gesture are inactive |
 
+### 3.7 Desktop Interface
+
+| ID | Requirement | Acceptance Criteria |
+|----|-------------|---------------------|
+| GUI-01 | Present every supported configuration area in one desktop interface | All eight configuration areas can be selected without using a command line |
+| GUI-02 | Explain each configuration area before it is run | The selected area shows a concise purpose and impact notice |
+| GUI-03 | Run one selected configuration area | Only the selected area is applied, and the interface remains responsive while it runs |
+| GUI-04 | Compare observed state before and after a run | Each observed setting shows its before value, after value, target, and outcome |
+| GUI-05 | Preview a selected area without changing the system | Preview completes without changing any observed setting |
+| GUI-06 | Restore a selected area to the state recorded immediately before its last run | After restore, each restorable setting matches the recorded pre-run value |
+| GUI-07 | Switch the desktop interface language | English is the default and Chinese can be selected from the upper-right language control |
+
 ---
 
 ## 4. Non-Functional Requirements
@@ -77,6 +89,7 @@ Zoom Rooms requires a specific Windows configuration to operate reliably as an a
 | NF-04 | Compatible with PowerShell 5.1+ on Windows 10 / Windows 11 |
 | NF-05 | Must run under local admin or SYSTEM account |
 | NF-06 | All operations must be logged with module, action, and outcome |
+| NF-07 | A double-clickable administrator desktop executable must be retained as a versioned project artifact |
 
 ---
 
@@ -103,3 +116,10 @@ Zoom Rooms requires a specific Windows configuration to operate reliably as an a
 | PW-03 | Never sleep | `modules/Power.ps1` | Implemented |
 | PW-04 | Never turn off display | `modules/Power.ps1` | Implemented |
 | UI-01 | Disable edge gestures | `modules/UI.ps1` | Implemented |
+| GUI-01 | Unified desktop interface | `scripts/WinConf.Gui.ps1` | Implemented |
+| GUI-02 | Module explanation and notice | `scripts/WinConf.Catalog.ps1` | Implemented |
+| GUI-03 | Selected-module execution | `scripts/WinConf.Gui.ps1` | Implemented |
+| GUI-04 | Before/after state comparison | `scripts/lib/State.ps1` | Implemented |
+| GUI-05 | Selected-module preview | `scripts/WinConf.Gui.ps1` | Implemented |
+| GUI-06 | Selected-module restore | `scripts/lib/Snapshot.ps1`, `scripts/WinConf.Gui.ps1` | Implemented |
+| GUI-07 | English default and Chinese switch | `scripts/WinConf.Catalog.ps1`, `scripts/WinConf.Gui.ps1` | Implemented |

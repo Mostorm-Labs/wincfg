@@ -63,6 +63,19 @@
 
 ---
 
+### Phase 5 — 桌面配置界面
+
+- [x] 建立 8 个模块的中文名称、说明和风险提示目录
+- [x] 为注册表、电源、服务和 Windows RE 提供统一只读状态采集
+- [x] 实现单模块运行、DryRun 预演、非阻塞进程监控和日志查看
+- [x] 实现运行前、运行后、目标值和结果的表格对比
+- [x] 在成功运行后启用按模块恢复，并比较恢复前后状态
+- [x] 增加默认 English 与右上角中文切换
+- [x] 使用系统自带 .NET Framework 编译器生成管理员权限启动器
+- [x] 将 `WinConf.exe` 作为版本化项目交付物保留
+
+---
+
 ## 结构决策
 
 | 决策 | 选择 | 原因 |
@@ -72,6 +85,9 @@
 | 快照格式 | JSON | 易读易解析 |
 | 服务管理 | 封装为 lib | 避免各模块重复调用 |
 | 背景服务 | Phase 4 暂缓 | 优先核心脚本可用 |
+| 桌面技术 | PowerShell Windows Forms + C# 启动器 | 复用既有脚本，在 PowerShell 5.1 环境中无需第三方运行库 |
+| EXE 构建 | x64 .NET Framework `csc.exe` | 确保读取 64 位系统注册表，并避免下载打包依赖 |
+| 状态对比 | 运行前后各做一次只读采集 | 对比真实系统结果，不以日志文本推断成功 |
 
 ---
 
@@ -80,6 +96,8 @@
 ```text
 ├── scripts/
 │   ├── winconf.ps1
+│   ├── WinConf.Gui.ps1
+│   ├── WinConf.Catalog.ps1
 │   ├── modules/
 │   │   ├── Power.ps1
 │   │   ├── ScreenLock.ps1
@@ -93,7 +111,13 @@
 │       ├── Logger.ps1
 │       ├── Registry.ps1
 │       ├── Service.ps1
-│       └── Snapshot.ps1
+│       ├── Snapshot.ps1
+│       └── State.ps1
+├── build/
+│   ├── WinConf.Launcher.cs
+│   └── WinConf.exe.manifest
+├── build.ps1
+├── WinConf.exe
 ├── service/
 │   └── winconf-agent/
 ├── docs/
