@@ -28,10 +28,17 @@ Describe 'WinConf desktop interface' {
     It 'builds an administrator launcher and explicitly tracks its artifact' {
         $manifest = Get-Content -Path "$PSScriptRoot\..\build\WinConf.exe.manifest" -Raw
         $ignore = Get-Content -Path "$PSScriptRoot\..\.gitignore" -Raw
+        $build = Get-Content -Path "$PSScriptRoot\..\build.ps1" -Raw
+        $launcher = Get-Content -Path "$PSScriptRoot\..\build\WinConf.Launcher.cs" -Raw
 
         $manifest | Should Match 'requestedExecutionLevel level="requireAdministrator"'
         $ignore | Should Match '!WinConf\.exe'
+        $build | Should Match '/resource:'
+        $launcher | Should Match 'GetManifestResourceNames'
+        $launcher | Should Match 'Path\.GetTempPath'
+        $launcher | Should Match 'Directory\.Delete\(path, true\)'
         Test-Path "$PSScriptRoot\..\WinConf.exe" | Should Be $true
+        (Get-Item "$PSScriptRoot\..\WinConf.exe").Length | Should BeGreaterThan 100000
     }
 
     It 'exposes restore and localized state entry points' {

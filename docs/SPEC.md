@@ -27,13 +27,15 @@ Script interface policy:
 
 Desktop interface:
 
-- `WinConf.exe` is an x64 .NET Framework launcher with a `requireAdministrator` manifest.
-- The launcher starts `scripts\WinConf.Gui.ps1` in Windows PowerShell with `-STA` and keeps the project root as its working directory.
+- `WinConf.exe` is an x64 .NET Framework single-file launcher with a `requireAdministrator` manifest.
+- `build.ps1` embeds every `scripts\**\*.ps1` file as a private manifest resource. The resource identifier contains the UTF-8 relative path encoded as hexadecimal.
+- At startup the launcher extracts those resources beneath `%TEMP%\WinConf\<random-id>`, starts the extracted `scripts\WinConf.Gui.ps1` in Windows PowerShell with `-STA`, and uses the extraction root as its working directory.
 - The interface runs one module by starting `scripts\winconf.ps1 -Module <name> -Verbose`; preview adds `-DryRun`.
 - After a successful non-preview run, the interface enables restore and starts `scripts\winconf.ps1 -Rollback -Module <name> -Verbose`; preview can also dry-run that rollback.
 - Module execution occurs in a child process so the Windows Forms message loop remains responsive.
 - The interface defaults to `en-US`; the upper-right language selector switches all presentation strings and module metadata to `zh-CN`.
-- `WinConf.exe` must remain next to the `scripts` directory and is intentionally retained in version control.
+- The launcher removes its extraction directory after the GUI process exits. Cleanup is best-effort when another process still holds a file.
+- `WinConf.exe` can be copied and run without the source tree and is intentionally retained in version control.
 
 ---
 
@@ -297,8 +299,8 @@ On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue
 | Snapshot        | `C:\ProgramData\WinConf\snapshot.json`  |
 | Watch list      | `C:\ProgramData\WinConf\agent-watch.json` |
 | Desktop launcher | `<project-root>\WinConf.exe`             |
-| Desktop script   | `<project-root>\scripts\WinConf.Gui.ps1` |
-| Module metadata  | `<project-root>\scripts\WinConf.Catalog.ps1` |
+| Extracted desktop script | `%TEMP%\WinConf\<random-id>\scripts\WinConf.Gui.ps1` |
+| Extracted module metadata | `%TEMP%\WinConf\<random-id>\scripts\WinConf.Catalog.ps1` |
 
 ---
 
@@ -315,7 +317,7 @@ On drift detection: write `WARN` log entry, re-invoke the affected `Set-RegValue
 - Desktop state probe unavailable -> show `未设置` without writing a fallback value
 - Desktop child process exits non-zero -> keep the before/after data, select the log tab, and show the exit code
 - No module snapshot is available -> disable restore and show an informational message
-- Desktop script missing beside the launcher -> show an error dialog and exit with code 2
+- Embedded resource missing or invalid -> clean any partial extraction, show a bilingual error dialog, and exit with code 1
 
 ## 7. Restore Model
 

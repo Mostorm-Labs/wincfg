@@ -76,6 +76,7 @@ Zoom Rooms requires a specific Windows configuration to operate reliably as an a
 | GUI-05 | Preview a selected area without changing the system | Preview completes without changing any observed setting |
 | GUI-06 | Restore a selected area to the state recorded immediately before its last run | After restore, each restorable setting matches the recorded pre-run value |
 | GUI-07 | Switch the desktop interface language | English is the default and Chinese can be selected from the upper-right language control |
+| GUI-08 | Distribute the desktop interface as one executable | `WinConf.exe` runs after being copied away from the source tree without requiring adjacent script files |
 
 ---
 
@@ -123,3 +124,4 @@ Zoom Rooms requires a specific Windows configuration to operate reliably as an a
 | GUI-05 | Selected-module preview | `scripts/WinConf.Gui.ps1` | Implemented |
 | GUI-06 | Selected-module restore | `scripts/lib/Snapshot.ps1`, `scripts/WinConf.Gui.ps1` | Implemented |
 | GUI-07 | English default and Chinese switch | `scripts/WinConf.Catalog.ps1`, `scripts/WinConf.Gui.ps1` | Implemented |
+| GUI-08 | Standalone executable distribution | `build.ps1`, `build/WinConf.Launcher.cs` | Implemented |
